@@ -6,8 +6,13 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
 
 export const authConfig: NextAuthConfig = {
-  adapter: PrismaAdapter(prisma),
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,   // ← add
+  trustHost: true,                                                  // ← helpful locally/behind proxy
   session: { strategy: "jwt" },
+  debug: process.env.NODE_ENV !== "production",
+
+  adapter: PrismaAdapter(prisma),
+
   providers: [
     GitHub({
       clientId: process.env.GITHUB_ID!,
@@ -29,6 +34,19 @@ export const authConfig: NextAuthConfig = {
       },
     }),
   ],
+  callbacks: {
+    async jwt({ token, trigger }) {
+      // set once at sign-in; keep existing value during session refreshes
+      if (trigger === "signIn" || !("loginAt" in token)) {
+        (token as any).loginAt = Date.now();
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      (session as any).loginAt = (token as any).loginAt ?? null;
+      return session;
+    },
+  },
 };
 
 export const { auth, handlers, signIn, signOut } = NextAuth(authConfig);
