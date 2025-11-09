@@ -1,6 +1,7 @@
 import "@/app/globals.css";
 import type { ReactNode } from "react";
 import Providers from "@/components/Providers";
+import ProfileMenu from "@/components/ProfileMenu"; // ← add
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -9,11 +10,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Providers>
           <div className="max-w-7xl mx-auto p-6">
             <header className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-semibold">Kanban</h1>
-              <nav className="space-x-4">
-                <a href="/" className="hover:underline">Board</a>
-                <a href="/reports" className="hover:underline">Reports</a>
-              </nav>
+              <div className="flex items-center gap-6">
+                <h1 className="text-2xl font-semibold">Kanban</h1>
+                <nav className="space-x-4">
+                  <a href="/" className="hover:underline">Board</a>
+                  <a href="/reports" className="hover:underline">Reports</a>
+                </nav>
+              </div>
+              <ProfileMenu /> {/* ← avatar at top-right */}
             </header>
             {children}
           </div>
