@@ -96,11 +96,27 @@ model Column {
   tasks    Task[]
 }
 
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 model Task {
   id          String  @id @default(cuid())
   title       String
   description String? @db.Text
   position    Float   @default(0)
+
+  externalId            String?   @unique
+  state                 String    @default("")
+  status                String?
+  priority              Priority?
+  estimatedSec          Int?
+  xp                    Int?      @default(0)
+  notes                 String?   @db.Text
+  dependencyExternalIds String[]  @default([])
 
   boardId    String
   columnId   String
@@ -133,6 +149,17 @@ model Subtask {
   startAt   DateTime?
   endAt     DateTime?
   logHours  Decimal   @default(0) @db.Decimal(6, 2)
+
+  // 🔽 add these if not already present
+  description           String?   @db.Text // <- NEW
+  externalId            String?   @unique
+  state                 String    @default("")
+  status                String?
+  priority              Priority?
+  estimatedSec          Int?
+  xp                    Int?      @default(0)
+  notes                 String?   @db.Text
+  dependencyExternalIds String[]  @default([])
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 }
