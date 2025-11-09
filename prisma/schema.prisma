@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+
+  accounts    Account[]
+  sessions    Session[]
+  memberships Membership[]
+  boards      Board[]      @relation("BoardOwner")
+  tasks       Task[]       @relation("TaskAssignee")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Board {
+  id        String       @id @default(cuid())
+  name      String
+  ownerId   String
+  owner     User         @relation("BoardOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  columns   Column[]
+  members   Membership[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  Task      Task[]
+}
+
+model Membership {
+  id      String @id @default(cuid())
+  role    Role   @default(MEMBER)
+  userId  String
+  boardId String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, boardId])
+}
+
+enum Role {
+  OWNER
+  MEMBER
+  VIEWER
+}
+
+model Column {
+  id       String @id @default(cuid())
+  name     String
+  position Float  @default(0)
+  boardId  String
+  board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tasks    Task[]
+}
+
+model Task {
+  id          String  @id @default(cuid())
+  title       String
+  description String? @db.Text
+  position    Float   @default(0)
+
+  boardId    String
+  columnId   String
+  assigneeId String?
+
+  board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  assignee User?  @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  closedAt  DateTime?
+  startAt   DateTime?
+  endAt     DateTime?
+  logHours  Decimal   @default(0) @db.Decimal(6, 2)
+
+  subtasks Subtask[]
+}
+
+model Subtask {
+  id        String  @id @default(cuid())
+  taskId    String
+  title     String
+  completed Boolean @default(false)
+  position  Float   @default(0)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  closedAt  DateTime?
+  startAt   DateTime?
+  endAt     DateTime?
+  logHours  Decimal   @default(0) @db.Decimal(6, 2)
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
