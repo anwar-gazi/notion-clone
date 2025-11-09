@@ -1,0 +1,43 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.cache/
+dist/
+build/
+tmp/
+
+# Next.js
+.next/
+out/
+.next/cache/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+.logs/
+
+# Coverage & tests
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Prisma (generated caches; keep schema & migrations tracked)
+.prisma/
+
+# Docker (optional overrides)
+docker-compose.override.yml
