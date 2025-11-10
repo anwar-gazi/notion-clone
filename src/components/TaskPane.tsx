@@ -21,7 +21,7 @@ function dtLabel(value: any) {
 }
 
 export default function TaskPane() {
-  const { open, task, closePane, updateInPane, notifyUpdated } = useTaskPane();
+  const { task, closePane, updateInPane, notifyUpdated } = useTaskPane();
   const backdropRef = useRef<HTMLDivElement>(null);
 
   // Import UI state
@@ -30,7 +30,7 @@ export default function TaskPane() {
   const [subVersion, setSubVersion] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  if (!open || !task) return null;
+  if (!task) return null;
 
   async function patchTask(data: any) {
     const res = await fetch("/api/tasks", {
@@ -42,7 +42,8 @@ export default function TaskPane() {
 
     if (!res.ok) return;
 
-    notifyUpdated({ id: task.id, title: data.title });
+    // broadcast whatever actually changed so Board can sync live
+    notifyUpdated({ id: task.id, ...data });
   }
 
   async function handleImport(file: File) {
