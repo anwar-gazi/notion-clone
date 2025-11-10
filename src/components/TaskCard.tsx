@@ -2,6 +2,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { useState } from "react";
 import SubtaskList from "./SubtaskList";
+import React from "react";
 import { useTaskPane } from "./TaskPaneProvider";
 
 export default function TaskCard({ task }: { task: any }) {
@@ -14,22 +15,41 @@ export default function TaskCard({ task }: { task: any }) {
 
   const [expanded, setExpanded] = useState(false);
 
+  // ✅ compute counts from subtasks (fallback to precomputed fields if present)
+  const total =
+    Array.isArray(task.subtasks) ? task.subtasks.length :
+    (typeof task.subtaskCount === "number" ? task.subtaskCount : 0);
+
+  const done =
+    Array.isArray(task.subtasks) ? task.subtasks.filter((s: any) => s.completed).length :
+    (typeof task.subtasksDone === "number" ? task.subtasksDone : 0);
+
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
       className="border rounded-xl p-3 bg-gray-50 cursor-pointer hover:bg-gray-100"
-      onClick={(e) => { e.stopPropagation(); openPane(task); }}
+      role="button"
+      tabIndex={0}
       title="Click to open details"
+      onClick={() => openPane(task)}
+      onKeyDown={(e) => e.key === "Enter" && openPane(task)}
+      aria-describedby=""
+      aria-disabled="false"
+      aria-roledescription="draggable"
     >
-      {/* keep your existing header/badge; you can remove inline details if you prefer all in pane */}
       <div className="flex items-center justify-between">
         <h4 className="font-medium">{task.title}</h4>
-        {/* ... your subtasks badge, etc. ... */}
+
+        {/* ✅ subtasks badge */}
+        {total > 0 && (
+          <span
+            aria-label="subtasks-count"
+            className="text-xs px-2 py-0.5 rounded-full bg-gray-200"
+          >
+            {done}/{total}
+          </span>
+        )}
       </div>
-      {/* (Optional) remove inline Details section since pane replaces it */}
+      {/* ...rest of card... */}
     </div>
   );
 }
