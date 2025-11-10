@@ -1,73 +1,100 @@
 "use client";
-import {
-  DndContext,
-  DragEndEvent,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import { useState, useMemo } from "react";
+
+import React, { useEffect, useState } from "react";
+import { DndContext, DragEndEvent } from "@dnd-kit/core";
 import Column from "./Column";
+import { useTaskPane } from "./TaskPaneProvider";
 
-export default function Board({ board }: { board: any }) {
-  const [columns, setColumns] = useState(board.columns);
+type AnyTask = {
+  id: string;
+  title: string;
+  columnId?: string;
+  position?: number;
+  // Allow any extra fields your app attaches (subtasks, status, etc.)
+  [key: string]: any;
+};
 
-  // 👇 Require movement (8px) before drag starts; avoid drag on simple clicks
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } })
-  );
+type AnyColumn = {
+  id: string;
+  name: string;
+  tasks: AnyTask[];
+  [key: string]: any;
+};
 
-  async function onDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over) return;
+type BoardData = {
+  columns: AnyColumn[];
+  [key: string]: any;
+};
+
+export default function Board({ board }: { board: BoardData }) {
+  // Render from local state so we can update immediately (optimistic/UI-first)
+  const [data, setData] = useState<BoardData>(board);
+  const { subscribe } = useTaskPane();
+
+  // If the prop changes wholesale (server revalidation, etc.) keep in sync
+  useEffect(() => setData(board), [board]);
+
+  // Listen for TaskPane updates (e.g., title rename) and patch the matching card
+  useEffect(() => {
+    const off = subscribe((patch) => {
+      if (!patch?.id) return;
+      setData((prev) => ({
+        ...prev,
+        columns: prev.columns.map((col) => ({
+          ...col,
+          tasks: col.tasks.map((t) => (t.id === patch.id ? { ...t, ...patch } : t)),
+        })),
+      }));
+    });
+    return off;
+  }, [subscribe]);
+
+  // Keep DnD handler present; keep it safe/no-op for unmatched cases.
+  async function handleDragEnd(evt: DragEndEvent) {
+    const { active, over } = evt;
+    if (!active?.id || !over?.id) return;
 
     const taskId = String(active.id);
-    const activeData = (active.data.current || {}) as any; // we inject {task, fromColumnId} from TaskCard
-    const fromColId = String(activeData.fromColumnId || activeData.columnId || "");
-    const toColId = String((over.data.current as any)?.columnId ?? over.id);
+    const destColumnId = String(over.id);
 
-    // ✅ If nothing actually changed (same column), do nothing
-    if (!fromColId || toColId === fromColId) return;
+    // Find the source/target columns
+    const srcColIdx = data.columns.findIndex((c) => c.tasks.some((t) => t.id === taskId));
+    const dstColIdx = data.columns.findIndex((c) => c.id === destColumnId);
 
-    const toCol = columns.find((c: any) => c.id === toColId);
-    const newPos = ((toCol?.tasks?.length ?? 0) + 1);
+    if (srcColIdx < 0 || dstColIdx < 0) return;
+    if (srcColIdx === dstColIdx) return; // same column: leave to Column’s own sortable logic
 
-    // Persist
-    await fetch("/api/tasks/reorder", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: taskId, columnId: toColId, position: newPos }),
+    // Move task in UI immediately (append to end of destination)
+    setData((prev) => {
+      const cols = prev.columns.map((c) => ({ ...c, tasks: [...c.tasks] }));
+      const srcTasks = cols[srcColIdx].tasks;
+      const dstTasks = cols[dstColIdx].tasks;
+
+      const idx = srcTasks.findIndex((t) => t.id === taskId);
+      if (idx < 0) return prev;
+
+      const [moved] = srcTasks.splice(idx, 1);
+      dstTasks.push({ ...moved, columnId: cols[dstColIdx].id });
+
+      return { ...prev, columns: cols };
     });
 
-    // Optimistic UI — IMPORTANT: use the functional state (`cols`), not the outer `columns`
-    setColumns((cols: any[]) => {
-      const fromId = fromColId;
-      return cols.map((c: any) => {
-        if (c.id === fromId) {
-          return { ...c, tasks: c.tasks.filter((t: any) => t.id !== taskId) };
-        }
-        if (c.id === toColId) {
-          // Add the task with updated column/position
-          const base = activeData.task || activeData; // in case we passed the whole task
-          return {
-            ...c,
-            tasks: [
-              ...c.tasks,
-              { ...base, id: taskId, columnId: toColId, position: newPos },
-            ],
-          };
-        }
-        return c;
+    // Persist (best effort; ignore any errors for now)
+    try {
+      await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: taskId, columnId: destColumnId }),
       });
-    });
+    } catch {
+      // Optionally: revert or toast
+    }
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+    <DndContext onDragEnd={handleDragEnd}>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {columns.map((col: any) => (
+        {data.columns.map((col) => (
           <Column key={col.id} column={col} />
         ))}
       </div>
