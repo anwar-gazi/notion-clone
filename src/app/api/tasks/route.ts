@@ -1,54 +1,29 @@
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+// src/app/api/tasks/route.ts
 import { NextResponse } from "next/server";
-import { genExternalId } from "@/lib/ids";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const body = await req.json();
-
-  // accept new metadata fields
-  let {
-    boardId, columnId, title, description, assigneeId, position,
-    startAt, endAt, logHours,
-    externalId, state, status, priority, estimatedSec, xp, notes, dependencyExternalIds
-  } = body;
-
-  if (!externalId) externalId = genExternalId("T");
-
-  const task = await prisma.task.create({
-    data: {
-      title, description, boardId, columnId, assigneeId,
-      position: position ?? 0,
-      startAt: startAt ? new Date(startAt) : undefined,
-      endAt: endAt ? new Date(endAt) : undefined,
-      logHours,
-      externalId, state: state ?? "", status, priority,
-      estimatedSec, xp, notes,
-      dependencyExternalIds
-    },
-  });
-  return NextResponse.json(task);
+  try {
+    const data = await req.json();
+    const created = await prisma.task.create({ data: { ...data } });
+    return NextResponse.json(created, { status: 201 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message ?? "create failed" }, { status: 400 });
+  }
 }
 
 export async function PATCH(req: Request) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const body = await req.json();
-  const { id, ...data } = body as any;
-
-  const closedAtPatch: any = {};
-  if (data.columnId) {
-    const col = await prisma.column.findUnique({ where: { id: data.columnId } });
-    if (col?.name.toLowerCase() === "done") closedAtPatch.closedAt = new Date();
-    else closedAtPatch.closedAt = null;
+  try {
+    const data = await req.json();
+    if (!data?.id) {
+      return NextResponse.json({ error: "id is required" }, { status: 400 });
+    }
+    const updated = await prisma.task.update({
+      where: { id: data.id },
+      data: { ...data },
+    });
+    return NextResponse.json(updated, { status: 200 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message ?? "update failed" }, { status: 400 });
   }
-
-  if (data.externalId === null || data.externalId === "") {
-    data.externalId = genExternalId("T");
-  }
-
-  const task = await prisma.task.update({ where: { id }, data: { ...data, ...closedAtPatch } });
-  return NextResponse.json(task);
 }
