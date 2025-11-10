@@ -6,6 +6,13 @@ import { genExternalId } from "@/lib/ids";
 export const runtime = "nodejs";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const ctype = req.headers.get("content-type") || "";
+
+  // ✅ Avoid calling req.formData() for non-multipart bodies
+  if (!ctype.includes("multipart/form-data") && !ctype.includes("application/x-www-form-urlencoded")) {
+    return NextResponse.json({ error: "invalid content-type" }, { status: 400 });
+  }
+
   const form = await req.formData();
   const f = form.get("file");
   if (!f || typeof f === "string") return NextResponse.json({ error: "no file" }, { status: 400 });
