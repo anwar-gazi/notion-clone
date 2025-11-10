@@ -21,7 +21,7 @@ function dtLabel(value: any) {
 }
 
 export default function TaskPane() {
-  const { open, task, closePane, updateInPane } = useTaskPane();
+  const { open, task, closePane, updateInPane, notifyUpdated } = useTaskPane();
   const backdropRef = useRef<HTMLDivElement>(null);
 
   // Import UI state
@@ -33,12 +33,16 @@ export default function TaskPane() {
   if (!open || !task) return null;
 
   async function patchTask(data: any) {
-    await fetch("/api/tasks", {
+    const res = await fetch("/api/tasks", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: task.id, ...data }),
     });
     updateInPane(data);
+
+    if (!res.ok) return;
+
+    notifyUpdated({ id: task.id, title: data.title });
   }
 
   async function handleImport(file: File) {
