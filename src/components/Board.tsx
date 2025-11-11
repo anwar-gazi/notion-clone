@@ -1,100 +1,74 @@
+// src/components/Board.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { DndContext, DragEndEvent } from "@dnd-kit/core";
+import { useState } from "react";
+import {
+  DndContext,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import Column from "./Column";
-import { useTaskPane } from "./TaskPaneProvider";
-
-type AnyTask = {
-  id: string;
-  title: string;
-  columnId?: string;
-  position?: number;
-  // Allow any extra fields your app attaches (subtasks, status, etc.)
-  [key: string]: any;
-};
-
-type AnyColumn = {
-  id: string;
-  name: string;
-  tasks: AnyTask[];
-  [key: string]: any;
-};
-
-type BoardData = {
-  columns: AnyColumn[];
-  [key: string]: any;
-};
+import { BoardData } from "@/types/data";
 
 export default function Board({ board }: { board: BoardData }) {
-  // Render from local state so we can update immediately (optimistic/UI-first)
-  const [data, setData] = useState<BoardData>(board);
-  const { subscribe } = useTaskPane();
+  const [columns, setColumns] = useState(board.columns);
 
-  // If the prop changes wholesale (server revalidation, etc.) keep in sync
-  useEffect(() => setData(board), [board]);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
-  // Listen for TaskPane updates (e.g., title rename) and patch the matching card
-  useEffect(() => {
-    const off = subscribe((patch) => {
-      if (!patch?.id) return;
-      setData((prev) => ({
-        ...prev,
-        columns: prev.columns.map((col) => ({
-          ...col,
-          tasks: col.tasks.map((t) => (t.id === patch.id ? { ...t, ...patch } : t)),
-        })),
-      }));
+  function moveTask(taskId: string, fromColId: string, toColId: string) {
+    if (fromColId === toColId) return;
+
+    setColumns((prev: any[]) => {
+      const next = prev.map((c) => ({ ...c, tasks: [...(c.tasks ?? [])] }));
+      const from = next.find((c) => c.id === fromColId);
+      const to = next.find((c) => c.id === toColId);
+      if (!from || !to) return prev;
+
+      const idx = from.tasks.findIndex((t: any) => t.id === taskId);
+      if (idx === -1) return prev;
+
+      const [task] = from.tasks.splice(idx, 1);
+      to.tasks.push({ ...task, columnId: toColId });
+
+      // Persist
+      fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId, columnId: toColId }),
+      }).catch(() => {});
+
+      return next;
     });
-    return off;
-  }, [subscribe]);
+  }
 
-  // Keep DnD handler present; keep it safe/no-op for unmatched cases.
-  async function handleDragEnd(evt: DragEndEvent) {
-    const { active, over } = evt;
-    if (!active?.id || !over?.id) return;
+  function onDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over) return;
 
     const taskId = String(active.id);
-    const destColumnId = String(over.id);
+    const fromColId = active.data.current?.columnId as string | undefined;
+    const toColId =
+      (over.data.current?.columnId as string | undefined) ?? String(over.id);
 
-    // Find the source/target columns
-    const srcColIdx = data.columns.findIndex((c) => c.tasks.some((t) => t.id === taskId));
-    const dstColIdx = data.columns.findIndex((c) => c.id === destColumnId);
-
-    if (srcColIdx < 0 || dstColIdx < 0) return;
-    if (srcColIdx === dstColIdx) return; // same column: leave to Column’s own sortable logic
-
-    // Move task in UI immediately (append to end of destination)
-    setData((prev) => {
-      const cols = prev.columns.map((c) => ({ ...c, tasks: [...c.tasks] }));
-      const srcTasks = cols[srcColIdx].tasks;
-      const dstTasks = cols[dstColIdx].tasks;
-
-      const idx = srcTasks.findIndex((t) => t.id === taskId);
-      if (idx < 0) return prev;
-
-      const [moved] = srcTasks.splice(idx, 1);
-      dstTasks.push({ ...moved, columnId: cols[dstColIdx].id });
-
-      return { ...prev, columns: cols };
-    });
-
-    // Persist (best effort; ignore any errors for now)
-    try {
-      await fetch("/api/tasks", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id: taskId, columnId: destColumnId }),
-      });
-    } catch {
-      // Optionally: revert or toast
-    }
+    if (fromColId && toColId) moveTask(taskId, fromColId, toColId);
   }
 
   return (
-    <DndContext onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragEnd={onDragEnd}
+    >
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {data.columns.map((col) => (
+        {columns.map((col: any) => (
           <Column key={col.id} column={col} />
         ))}
       </div>
