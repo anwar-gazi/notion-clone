@@ -4,12 +4,13 @@ import { useState } from "react";
 import SubtaskList from "./SubtaskList";
 import React from "react";
 import { useTaskPane } from "./TaskPaneProvider";
+import { TaskData } from "@/types/data";
 
-export default function TaskCard({ task }: { task: any }) {
+export default function TaskCard({ task }: { task: TaskData }) {
   const { openPane } = useTaskPane();
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: task.id,
-    data: { task: { ...task }, fromColumnId: task.columnId },
+    data: { type: 'task', columnId: task.columnId },
   });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
 
@@ -26,9 +27,13 @@ export default function TaskCard({ task }: { task: any }) {
 
   return (
     <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
       className="border rounded-xl p-3 bg-gray-50 cursor-pointer hover:bg-gray-100"
       role="button"
       tabIndex={0}
+      style={style}
       title="Click to open details"
       onClick={() => openPane(task)}
       onKeyDown={(e) => e.key === "Enter" && openPane(task)}
