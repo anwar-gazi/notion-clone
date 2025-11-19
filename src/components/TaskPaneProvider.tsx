@@ -9,31 +9,13 @@ import React, {
   useState,
 } from "react";
 
-// Adjust to your real Task shape
-export type Task = {
-  id: string;
-  title: string;
-  description?: string;
-  createdAt?: string | Date;
-  closedAt?: string | Date;
-  startAt?: string | Date | null;
-  endAt?: string | Date | null;
-  logHours?: number;
-  externalId?: string;
-  state?: string;
-  status?: string;
-  priority?: "" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-  estimatedSec?: number;
-  notes?: string;
-  dependencyExternalIds?: string[]; 
-  subtasks?: Array<{ id: string; title: string; completed?: boolean }>;
-};
+import { TaskDTO } from "@/types/data";
 
-export type PanePatch = Partial<Task> & { id?: string };
+export type PanePatch = Partial<TaskDTO> & { id?: string };
 
 type CtxValue = {
-  task: Task | null;
-  openPane: (task: Task) => void;
+  task: TaskDTO | null;
+  openPane: (task: TaskDTO) => void;
   closePane: () => void;
 
   /** Merge fields into the currently opened task (local, optimistic). */
@@ -49,10 +31,10 @@ type CtxValue = {
 const Ctx = createContext<CtxValue | null>(null);
 
 export default function TaskPaneProvider({ children }: { children: React.ReactNode }) {
-  const [task, setTask] = useState<Task | null>(null);
+  const [task, setTask] = useState<TaskDTO | null>(null);
   const subs = useRef(new Set<(p: PanePatch) => void>());
 
-  const openPane = useCallback((t: Task) => {
+  const openPane = useCallback((t: TaskDTO) => {
     setTask(t);
   }, []);
 
@@ -61,7 +43,7 @@ export default function TaskPaneProvider({ children }: { children: React.ReactNo
   }, []);
 
   const updateInPane = useCallback((patch: PanePatch) => {
-    setTask((prev) => (prev ? ({ ...prev, ...patch } as Task) : prev));
+    setTask((prev) => (prev ? ({ ...prev, ...patch } as TaskDTO) : prev));
   }, []);
 
   const notifyUpdated = useCallback((patch: PanePatch) => {
