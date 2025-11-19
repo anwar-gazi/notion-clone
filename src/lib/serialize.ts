@@ -1,5 +1,8 @@
 // src/lib/serialize.ts
 
+import type { Task as DbTask, Priority } from "@prisma/client";
+import { TaskDTO, BoardDTO } from "@/types/data";
+
 /**
  * Recursively convert Prisma Decimal/Date/BigInt into JSON-serializable primitives.
  * - Decimal: detect by duck-typing (toNumber/toString or ctor name === 'Decimal')
@@ -49,4 +52,86 @@ export function toPlain<T>(data: T): T {
   };
 
   return walk(data) as T;
+}
+
+
+
+// Map a DB task + included subtasks -> API DTO (one level of nesting is enough for current UI)
+export function toTaskDTO(t: (DbTask & { subtasks?: DbTask[] }) | null): TaskDTO | null {
+  if (!t) return null;
+  return {
+    id: t.id,
+    title: t.title,
+    description: t.description ?? "",
+    columnId: t.columnId ?? "",
+    parentTaskId: t.parentTaskId ?? null,
+
+
+    externalId: t.externalId ?? null,
+    state: t.state ?? null,
+    status: t.status ?? null,
+    priority: (t as DbTask).priority ?? null,
+    xp: t.xp,
+    estimatedSec: t.estimatedSec,
+    notes: t.notes ?? null,
+    dependencyExternalIds: t.dependencyExternalIds ?? [],
+
+
+    startAt: t.startAt ? new Date(t.startAt).toISOString() : null,
+    endAt: t.endAt ? new Date(t.endAt).toISOString() : null,
+    logHours: t.logHours,
+    createdAt: new Date(t.createdAt).toISOString(),
+    closedAt: t.closedAt ? new Date(t.closedAt).toISOString() : null,
+
+
+    subtasks: (t.subtasks || []).map((s) => ({
+      id: s.id,
+      title: s.title,
+      description: s.description ?? null,
+      columnId: s.columnId ?? null,
+      parentTaskId: s.parentTaskId ?? null,
+
+
+      externalId: s.externalId ?? null,
+      state: s.state ?? null,
+      status: s.status ?? null,
+      priority: (s as DbTask).priority ?? null,
+      xp: s.xp,
+      estimatedSec: s.estimatedSec,
+      notes: s.notes ?? null,
+      dependencyExternalIds: s.dependencyExternalIds ?? [],
+
+
+      startAt: s.startAt ? new Date(s.startAt).toISOString() : null,
+      endAt: s.endAt ? new Date(s.endAt).toISOString() : null,
+      logHours: s.logHours,
+      createdAt: new Date(s.createdAt).toISOString(),
+      closedAt: s.closedAt ? new Date(s.closedAt).toISOString() : null,
+
+
+      subtasks: [],
+    })),
+  };
+}
+
+
+// Optional helper: group tasks into columns for the board if you fetch all top-level tasks.
+export function toBoardDTO(tasks: DbTask[]): BoardDTO {
+  const buckets = new Map<string, TaskDTO[]>();
+  for (const t of tasks) {
+    const key = t.columnId || "default";
+    if (!buckets.has(key)) buckets.set(key, []);
+    const dto = toTaskDTO({ ...t, subtasks: [] })!;
+    buckets.get(key)!.push(dto);
+  }
+  const columns = Array.from(buckets.entries()).map(([id, items]) => ({ id, name: pretty(id), tasks: items }));
+  return { columns };
+}
+
+
+function pretty(id: string) {
+  if (!id || id === "default") return "To Do";
+  return id
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (m) => m.toUpperCase());
 }
