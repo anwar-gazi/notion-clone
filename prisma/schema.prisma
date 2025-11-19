@@ -122,6 +122,11 @@ model Task {
   columnId   String
   assigneeId String?
 
+  // Self-relation to model subtasks
+  parentTaskId String?
+  parent Task? @relation("TaskParent", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  subtasks Task[] @relation("TaskParent")
+
   board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
   assignee User?  @relation("TaskAssignee", fields: [assigneeId], references: [id])
@@ -133,33 +138,7 @@ model Task {
   endAt     DateTime?
   logHours  Decimal   @default(0) @db.Decimal(6, 2)
 
-  subtasks Subtask[]
+  @@index([parentTaskId])
+  @@index([columnId])
 }
 
-model Subtask {
-  id        String  @id @default(cuid())
-  taskId    String
-  title     String
-  completed Boolean @default(false)
-  position  Float   @default(0)
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  closedAt  DateTime?
-  startAt   DateTime?
-  endAt     DateTime?
-  logHours  Decimal   @default(0) @db.Decimal(6, 2)
-
-  // 🔽 add these if not already present
-  description           String?   @db.Text // <- NEW
-  externalId            String?   @unique
-  state                 String    @default("")
-  status                String?
-  priority              Priority?
-  estimatedSec          Int?
-  xp                    Int?      @default(0)
-  notes                 String?   @db.Text
-  dependencyExternalIds String[]  @default([])
-
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-}
