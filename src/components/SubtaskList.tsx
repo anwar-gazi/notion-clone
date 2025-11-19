@@ -22,20 +22,20 @@ export default function SubtaskList({
 
   async function add() {
     if (!title.trim()) return;
-    const res = await fetch("/api/subtasks", {
+    const res = await fetch("/api/subtasks/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ taskId, title }),
+      body: JSON.stringify({ parentTaskId: taskId, title }),
     });
     const st = await res.json();
     const next = [...items, st];
     setItems(next);
     onChange?.(next);
-    setTitle("");
+    //setTitle("");
   }
 
   async function toggle(id: string, completed: boolean) {
-    const res = await fetch("/api/subtasks", {
+    const res = await fetch("/api/tasks", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, completed }),
@@ -47,7 +47,7 @@ export default function SubtaskList({
   }
 
   async function patch(id: string, data: any) {
-    const res = await fetch("/api/subtasks", {
+    const res = await fetch("/api/tasks", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, ...data }),
