@@ -82,17 +82,27 @@ const BoardContxt = createContext<BoardContextDTO | null>(null);
 export function BoardProvider({ initial, children }: { initial: BoardDTO, children: React.ReactNode }): JSX.Element {
     const [board, dispatch] = useReducer(reducer, initial);
 
-    const patchTask = useCallback((id: Id, patch: Partial<TaskDTO>) => {
+    const patchTask = useCallback(async (id: Id, patch: Partial<TaskDTO>) => {
         dispatch({ type: "PATCH_TASK", id, patch });
+        await fetch("/api/tasks", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, ...patch }),
+        });
     }, [dispatch]);
 
-    const moveTask = useCallback((id: Id, toColumnId: Id) => {
+    const moveTask = useCallback(async (id: Id, toColumnId: Id) => {
         dispatch({ type: "MOVE_TASK", id, toColumnId });
+        await fetch("/api/tasks", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, columnId: toColumnId }),
+        });
     }, [dispatch]);
 
     const saveTask = useCallback(async (id: Id, patch: Partial<TaskDTO>) => {
         // optimistic update first
-        patchTask(id, patch);
+        //patchTask(id, patch);
         // then persist (handle errors as needed)
         await fetch("/api/tasks", {
             method: "PATCH",
