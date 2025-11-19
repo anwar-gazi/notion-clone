@@ -1,12 +1,20 @@
 "use client";
 import { useDraggable } from "@dnd-kit/core";
 import { useState } from "react";
-import SubtaskList from "./SubtaskList";
+//import SubtaskList from "./SubtaskList";
 import React from "react";
 import { useTaskPane } from "./TaskPaneProvider";
-import { TaskData } from "@/types/data";
+import { useTaskById } from "./BoardContext";
+import { TaskDTO } from "@/types/data";
+//import { TaskData } from "@/types/data";
 
-export default function TaskCard({ task }: { task: TaskData }) {
+/**
+ * 
+ * @param param0 
+ * @returns 
+ * @requires BoardProvider gets data from the board context provider
+ */
+export default function TaskCard({ task }: { task: TaskDTO }) {
   const { openPane } = useTaskPane();
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: task.id,
@@ -14,16 +22,12 @@ export default function TaskCard({ task }: { task: TaskData }) {
   });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
 
-  const [expanded, setExpanded] = useState(false);
+  // const [expanded, setExpanded] = useState(false);
 
   // ✅ compute counts from subtasks (fallback to precomputed fields if present)
-  const total =
-    Array.isArray(task.subtasks) ? task.subtasks.length :
-    (typeof task.subtaskCount === "number" ? task.subtaskCount : 0);
+  const total = task.subtasks.length;
 
-  const done =
-    Array.isArray(task.subtasks) ? task.subtasks.filter((s: any) => s.completed).length :
-    (typeof task.subtasksDone === "number" ? task.subtasksDone : 0);
+  const done = task.subtasks.filter((s: any) => s.completed).length;
 
   return (
     <div
