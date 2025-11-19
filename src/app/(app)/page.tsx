@@ -37,7 +37,7 @@ export default async function Page() {
   }
 
   const boardRaw = await prisma.board.findUnique({
-    where: { id: membership.boardId },
+    where: { id: membership!.boardId },
     include: {
       columns: {
         orderBy: { position: "asc" },
