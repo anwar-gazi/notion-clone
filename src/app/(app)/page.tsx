@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import Board from "@/components/Board";
 import { auth } from "@/lib/auth";
 import { toPlain } from "@/lib/serialize";
+import { BoardDTO, ColumnDTO, TaskDTO } from "@/types/data";
+import { BoardProvider } from "@/components/BoardContext";
 
 export default async function Page() {
   const session = await auth();
@@ -50,7 +52,30 @@ export default async function Page() {
     },
   });
 
-  const board = toPlain(boardRaw);   // 🔑 make it serializable
+  // now to the standardized format
+  const tempBoard = toPlain(boardRaw);   // 🔑 make it serializable
+  const columns: Record<string, ColumnDTO> = {};
+  const tasks: Record<string, TaskDTO> = {};
+  for (const column of tempBoard!.columns) {
+    columns[column.id] = {
+      id: column.id,
+      name: column.name,
+      taskIds: column.tasks.map(t => t.id)
+    };
 
-  return <Board board={board!} />;
+    for (const t of column.tasks) {
+      tasks[t.id] = t;
+    }
+  }
+
+  //console.log(columns);
+
+  const board: BoardDTO = {
+    id: tempBoard!.id,
+    name: tempBoard!.name,
+    columns,
+    tasks
+  };
+
+  return <Board board={board} />;
 }
