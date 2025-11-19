@@ -1,77 +1,44 @@
 // src/components/Board.tsx
 "use client";
 
-import { useState } from "react";
-import {
-  DndContext,
-  closestCorners,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import Column from "./Column";
-import { BoardData } from "@/types/data";
+import { BoardDTO, ColumnDTO } from "@/types/data";
+import { BoardProvider } from "./BoardContext";
 
-export default function Board({ board }: { board: BoardData }) {
-  const [columns, setColumns] = useState(board.columns);
+export default function Board({ board }: { board: BoardDTO }) {
+  // function moveTask(taskId: string, fromColId: string, toColId: string) {
+  // if (fromColId === toColId) return;
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
+  // setColumns((prev: any[]) => {
+  //   const next = prev.map((c) => ({ ...c, tasks: [...(c.tasks ?? [])] }));
+  //   const from = next.find((c) => c.id === fromColId);
+  //   const to = next.find((c) => c.id === toColId);
+  //   if (!from || !to) return prev;
 
-  function moveTask(taskId: string, fromColId: string, toColId: string) {
-    if (fromColId === toColId) return;
+  //   const idx = from.tasks.findIndex((t: any) => t.id === taskId);
+  //   if (idx === -1) return prev;
 
-    setColumns((prev: any[]) => {
-      const next = prev.map((c) => ({ ...c, tasks: [...(c.tasks ?? [])] }));
-      const from = next.find((c) => c.id === fromColId);
-      const to = next.find((c) => c.id === toColId);
-      if (!from || !to) return prev;
+  //   const [task] = from.tasks.splice(idx, 1);
+  //   to.tasks.push({ ...task, columnId: toColId });
 
-      const idx = from.tasks.findIndex((t: any) => t.id === taskId);
-      if (idx === -1) return prev;
+  //   // Persist
+  //   fetch("/api/tasks", {
+  //     method: "PATCH",
+  //     headers: { "Content-Type": "application/json" },
+  //     body: JSON.stringify({ id: taskId, columnId: toColId }),
+  //   }).catch(() => { });
 
-      const [task] = from.tasks.splice(idx, 1);
-      to.tasks.push({ ...task, columnId: toColId });
-
-      // Persist
-      fetch("/api/tasks", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: taskId, columnId: toColId }),
-      }).catch(() => {});
-
-      return next;
-    });
-  }
-
-  function onDragEnd(e: DragEndEvent) {
-    const { active, over } = e;
-    if (!over) return;
-
-    const taskId = String(active.id);
-    const fromColId = active.data.current?.columnId as string | undefined;
-    const toColId =
-      (over.data.current?.columnId as string | undefined) ?? String(over.id);
-
-    if (fromColId && toColId) moveTask(taskId, fromColId, toColId);
-  }
+  //   return next;
+  // });
+  // }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragEnd={onDragEnd}
-    >
+    <BoardProvider initial={board}>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {columns.map((col: any) => (
+        {Object.values(board.columns).map((col: ColumnDTO) => (
           <Column key={col.id} column={col} />
         ))}
       </div>
-    </DndContext>
+    </BoardProvider>
   );
 }
