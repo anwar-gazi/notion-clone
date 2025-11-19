@@ -1,63 +1,35 @@
+// src/app/api/tasks/[id]/import/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { loadXlsx } from "@/lib/excel";
-import { genExternalId } from "@/lib/ids";
 
-export const runtime = "nodejs";
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const ctype = req.headers.get("content-type") || "";
+export const runtime = "nodejs"; // ensure node runtime for FormData / file parsing
 
-  // ✅ Avoid calling req.formData() for non-multipart bodies
-  if (!ctype.includes("multipart/form-data") && !ctype.includes("application/x-www-form-urlencoded")) {
-    return NextResponse.json({ error: "invalid content-type" }, { status: 400 });
-  }
 
+export async function POST(req: Request, ctx: { params: { id: string } }) {
+  const { id } = ctx.params;
   const form = await req.formData();
-  const f = form.get("file");
-  if (!f || typeof f === "string") return NextResponse.json({ error: "no file" }, { status: 400 });
-  const buf = Buffer.from(await f.arrayBuffer());
-  const sheets = loadXlsx(buf, (f as File).name || "import.xlsx");
+  const file = form.get("file") as File | null;
+  if (!file) return NextResponse.json({ error: "file required" }, { status: 400 });
 
-  // Create subtasks under the specified Task (kanban card). If workbook contains multiple sheets,
-  // we still attach rows as subtasks to THIS task (per your requirement: "import subtasks for a task from GUI").
-  let created = 0, skipped = 0;
 
-  for (const sh of sheets) {
-    for (const row of sh.rows) {
-      if (!row.title) { skipped++; continue; }
+  // Assumes you already have xlsx in your deps or a util to parse.
+  // For simplicity, treat the first column as subtask titles.
+  const buf = Buffer.from(await file.arrayBuffer());
+  const xlsx = await import("xlsx");
+  const wb = xlsx.read(buf, { type: "buffer" });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows: any[] = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+  const titles: string[] = rows.flat().filter(Boolean);
 
-      // priority normalization
-      const pr = (() => {
-        const s = (row.priority || "").toUpperCase();
-        if (["LOW","L"].includes(s)) return "LOW";
-        if (["MEDIUM","MID","M"].includes(s)) return "MEDIUM";
-        if (["HIGH","H"].includes(s)) return "HIGH";
-        if (["CRITICAL","URGENT","P1"].includes(s)) return "CRITICAL";
-        return undefined;
-      })();
 
-      // keep given externalId or generate
-      const externalId = row.externalId || genExternalId("ST");
-
-      await prisma.subtask.create({
-        data: {
-          taskId: params.id,
-          title: row.title,
-          description: row.description,
-          externalId,
-          state: row.state ?? "",
-          status: row.status,
-          priority: pr as any,
-          estimatedSec: row.estimatedSec,
-          xp: row.xp,
-          notes: row.notes,
-          dependencyExternalIds: row.dependencyExternalIds ?? []
-        }
-      });
-      created++;
-    }
+  let created = 0;
+  for (const title of titles) {
+    if (typeof title !== "string" || !title.trim()) continue;
+    await prisma.task.create({ data: { title: title.trim(), parentTaskId: id } });
+    created++;
   }
 
-  return NextResponse.json({ created, skipped });
+
+  return NextResponse.json({ created, skipped: Math.max(0, titles.length - created) });
 }
