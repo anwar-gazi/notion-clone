@@ -10,7 +10,7 @@ import { useTasksInColumn } from "./BoardContext";
  * @returns 
  */
 export default function Column({ column }: { column: ColumnDTO }) {
-  const tasks = useTasksInColumn(column.id);
+  const tasks = useTasksInColumn(column.id).filter(t => !t.parentTaskId);
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
     data: { type: 'column', columnId: column.id }
