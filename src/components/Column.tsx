@@ -19,7 +19,7 @@ export default function Column({ column }: { column: ColumnDTO }) {
   return (
     <div className="bg-white rounded-2xl shadow p-4">
       <header className="font-semibold mb-2 flex items-center justify-between">
-        <span>{column.name}</span><span className="text-sm text-gray-400">{column.taskIds.length}</span>
+        <span>{column.name}</span><span className="text-sm text-gray-400">{tasks.length}</span>
       </header>
       <div
         ref={setNodeRef}
