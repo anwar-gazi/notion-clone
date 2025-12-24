@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { auth } from "@/../auth";
 import { NextResponse } from "next/server";
 
 export async function GET(_req: Request, { params }: { params: { boardId: string } }) {
