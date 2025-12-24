@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Board from "@/components/Board";
-import { auth } from "@/lib/auth";
+import { auth } from "@/../auth";
 import { toPlain } from "@/lib/serialize";
 import { BoardDTO, ColumnDTO, TaskDTO } from "@/types/data";
 import { BoardProvider } from "@/components/BoardContext";
