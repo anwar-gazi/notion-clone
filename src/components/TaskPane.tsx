@@ -51,6 +51,22 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     setShowReopenModal(false);
     setReopenReason("");
   }, [taskId, taskFromBoard]);
+
+  // Always hydrate latest task (with closure logs) when pane opens
+  useEffect(() => {
+    const load = async () => {
+      if (!taskId) return;
+      try {
+        const res = await fetch(`/api/tasks/${taskId}`);
+        if (!res.ok) return;
+        const fresh: TaskDTO = await res.json();
+        setPaneTask(fresh);
+      } catch {
+        // ignore fetch errors for now
+      }
+    };
+    load();
+  }, [taskId]);
   const breadcrumbs = useMemo(() => {
     const items: TaskDTO[] = [];
     let current: TaskDTO | null = paneTask;
