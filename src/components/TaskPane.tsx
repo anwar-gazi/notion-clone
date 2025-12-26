@@ -336,18 +336,23 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
               />
             </Field>
             <Field label="Logged hours" status={fieldStatus["logHours"]} disabled={isClosed}>
-              <input
-                type="number"
-                step={0.25}
-                className="border rounded-xl px-3 py-2 w-full"
-                defaultValue={Number(paneTask.logHours || 0)}
-                onBlur={(e) => commitIfChanged("logHours", parseFloat(e.currentTarget.value || "0"))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    commitIfChanged("logHours", parseFloat((e.currentTarget as HTMLInputElement).value || "0"));
-                  }
-                }}
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step={0.25}
+                  className="border rounded-xl px-3 py-2 w-full"
+                  defaultValue={Number(paneTask.logHours || 0)}
+                  onBlur={(e) => commitIfChanged("logHours", parseFloat(e.currentTarget.value || "0"))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      commitIfChanged("logHours", parseFloat((e.currentTarget as HTMLInputElement).value || "0"));
+                    }
+                  }}
+                />
+                <span className="text-xs text-gray-500 whitespace-nowrap">
+                  Subtasks: {Number((paneTask.subtasks || []).reduce((sum, s) => sum + Number(s.logHours || 0), 0)).toFixed(2)}
+                </span>
+              </div>
             </Field>
           </section>
 
