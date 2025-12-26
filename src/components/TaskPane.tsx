@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useTaskPane } from "./TaskPaneProvider";
+import { useRef, useState, useEffect, useCallback } from "react";
 import SubtaskList from "./SubtaskList";
+import { useBoard } from "./BoardContext";
+import { TaskDTO } from "@/types/data";
 
 /* ————— helpers ————— */
 function toLocalInput(value: any) {
@@ -20,8 +21,18 @@ function dtLabel(value: any) {
   return d.toLocaleString();
 }
 
-export default function TaskPane() {
-  const { task, closePane, updateInPane, notifyUpdated } = useTaskPane();
+type InlineStatus = {
+  state: "idle" | "saving" | "success" | "error";
+  message?: string;
+  retry?: () => void;
+};
+
+export default function TaskPane({ taskId, onClose }: { taskId: string | null; onClose: () => void }) {
+  const board = useBoard();
+  const taskFromBoard = taskId && board ? board.board.tasks[taskId] : null;
+
+  const [paneTask, setPaneTask] = useState<TaskDTO | null>(taskFromBoard || null);
+  const [fieldStatus, setFieldStatus] = useState<Record<string, InlineStatus>>({});
   const backdropRef = useRef<HTMLDivElement>(null);
 
   // Import UI state
@@ -30,36 +41,61 @@ export default function TaskPane() {
   const [subVersion, setSubVersion] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  if (!task) return null;
+  useEffect(() => {
+    setPaneTask(taskFromBoard || null);
+    setFieldStatus({});
+    setImportMsg("");
+    setSubVersion((v) => v + 1);
+  }, [taskId, taskFromBoard?.id]);
 
-  async function patchTask(data: any) {
-    const res = await fetch("/api/tasks", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: task.id, ...data }),
-    });
-    updateInPane(data);
+  const markSuccessTimeout = useCallback((key: string) => {
+    setTimeout(() => {
+      setFieldStatus((prev) => {
+        if (prev[key]?.state === "success") {
+          const next = { ...prev };
+          next[key] = { state: "idle" };
+          return next;
+        }
+        return prev;
+      });
+    }, 5000);
+  }, []);
 
-    if (!res.ok) return;
-
-    // broadcast whatever actually changed so Board can sync live
-    notifyUpdated({ id: task.id, ...data });
-  }
+  const runSave = useCallback(
+    async (key: string, patch: Partial<TaskDTO>) => {
+      if (!paneTask || !board) return;
+      setFieldStatus((prev) => ({ ...prev, [key]: { state: "saving" } }));
+      try {
+        await board.patchTask(paneTask.id, patch);
+        setPaneTask((prev) => (prev ? ({ ...prev, ...patch } as TaskDTO) : prev));
+        setFieldStatus((prev) => ({ ...prev, [key]: { state: "success", message: "Saved" } }));
+        markSuccessTimeout(key);
+      } catch (e: any) {
+        const retry = () => runSave(key, patch);
+        setFieldStatus((prev) => ({
+          ...prev,
+          [key]: { state: "error", message: e?.message || "Save failed", retry },
+        }));
+      }
+    },
+    [board, paneTask, markSuccessTimeout]
+  );
 
   async function handleImport(file: File) {
+    if (!paneTask) return;
     setUploading(true);
     setImportMsg("");
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch(`/api/tasks/${task.id}/import`, { method: "POST", body: fd });
+      const res = await fetch(`/api/tasks/${paneTask.id}/import`, { method: "POST", body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j?.error || "Import failed");
 
-      const r2 = await fetch(`/api/tasks/${task.id}`);
+      const r2 = await fetch(`/api/tasks/${paneTask.id}`);
       const fresh = await r2.json();
 
-      updateInPane({ subtasks: fresh.subtasks || [] });
+      setPaneTask((prev) => (prev ? ({ ...prev, subtasks: fresh.subtasks || [] } as TaskDTO) : prev));
       setSubVersion((v) => v + 1);
       setImportMsg(`Imported ${j.created}${j.skipped ? `, skipped ${j.skipped}` : ""}.`);
     } catch (e: any) {
@@ -69,6 +105,8 @@ export default function TaskPane() {
       if (fileRef.current) fileRef.current.value = "";
     }
   }
+
+  if (!taskId || !paneTask) return null;
 
   // Editable metadata spec
   const meta = [
@@ -95,8 +133,8 @@ export default function TaskPane() {
     },
   ] as const;
 
-  const doneCount = (task.subtasks || []).filter((s: any) => s.completed).length;
-  const totalCount = (task.subtasks || []).length;
+  const doneCount = (paneTask.subtasks || []).filter((s: any) => s.completed).length;
+  const totalCount = (paneTask.subtasks || []).length;
 
   return (
     <>
@@ -104,13 +142,16 @@ export default function TaskPane() {
       <div
         ref={backdropRef}
         onClick={(e) => {
-          if (e.target === backdropRef.current) closePane();
+          if (e.target === backdropRef.current) {
+            onClose();
+          }
         }}
         className="fixed inset-0 bg-black/40 z-40"
         aria-hidden="true"
       />
       {/* PANEL */}
       <aside
+        key={paneTask.id}
         role="dialog"
         aria-modal="true"
         className="fixed right-0 top-0 h-full w-full max-w-xl bg-white z-50 shadow-2xl flex flex-col"
@@ -118,15 +159,19 @@ export default function TaskPane() {
         {/* Header */}
         <div className="p-4 border-b flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <EditableTitle title={task.title} onSave={(title) => patchTask({ title })} />
+            <EditableTitle
+              title={paneTask.title}
+              onSave={(title) => runSave("title", { title })}
+              status={fieldStatus["title"]}
+            />
             <div className="text-xs text-gray-500 mt-1">
-              Created: {dtLabel(task.createdAt)}
-              {task.closedAt && <> • Closed: {dtLabel(task.closedAt)}</>}
+              Created: {dtLabel(paneTask.createdAt)}
+              {paneTask.closedAt && <> • Closed: {dtLabel(paneTask.closedAt)}</>}
             </div>
           </div>
           <button
             className="rounded-full w-8 h-8 flex items-center justify-center hover:bg-gray-100"
-            onClick={closePane}
+            onClick={onClose}
             aria-label="Close"
           >
             ✕
@@ -137,14 +182,15 @@ export default function TaskPane() {
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Description */}
           <section>
-            <label className="block text-xs mb-1 text-gray-600">Description</label>
-            <textarea
-              className="w-full border rounded-xl p-3"
-              rows={6}
-              defaultValue={task.description || ""}
-              onBlur={(e) => patchTask({ description: e.currentTarget.value })}
-              placeholder="Describe the task. Markdown supported."
-            />
+            <Field label="Description" status={fieldStatus["description"]}>
+              <textarea
+                className="w-full border rounded-xl p-3"
+                rows={6}
+                defaultValue={paneTask.description || ""}
+                onBlur={(e) => runSave("description", { description: e.currentTarget.value })}
+                placeholder="Describe the task. Markdown supported."
+              />
+            </Field>
           </section>
 
           {/* Details grid */}
@@ -155,15 +201,16 @@ export default function TaskPane() {
                 <MetaField
                   key={m.key as string}
                   label={m.label}
-                  value={m.toView ? m.toView(task[m.key as keyof typeof task]) : (task[m.key as keyof typeof task] as any)}
+                  value={m.toView ? m.toView(paneTask[m.key as keyof TaskDTO]) : (paneTask[m.key as keyof TaskDTO] as any)}
                   type={(m as any).type}
                   options={(m as any).options}
                   readOnly={(m as any).readOnly}
                   step={(m as any).step}
+                  status={fieldStatus[m.key as string]}
                   onBlur={(val: any) => {
                     if ((m as any).readOnly) return;
                     const v = m.toSend ? m.toSend(val) : val;
-                    patchTask({ [m.key]: v });
+                    runSave(m.key as string, { [m.key]: v } as any);
                   }}
                 />
               ))}
@@ -172,29 +219,29 @@ export default function TaskPane() {
 
           {/* Time tracking */}
           <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Start time">
+            <Field label="Start time" status={fieldStatus["startAt"]}>
               <input
                 type="datetime-local"
                 className="border rounded-xl px-3 py-2 w-full"
-                defaultValue={toLocalInput(task.startAt)}
-                onBlur={(e) => patchTask({ startAt: e.currentTarget.value || null })}
+                defaultValue={toLocalInput(paneTask.startAt)}
+                onBlur={(e) => runSave("startAt", { startAt: e.currentTarget.value || null })}
               />
             </Field>
-            <Field label="End time">
+            <Field label="End time" status={fieldStatus["endAt"]}>
               <input
                 type="datetime-local"
                 className="border rounded-xl px-3 py-2 w-full"
-                defaultValue={toLocalInput(task.endAt)}
-                onBlur={(e) => patchTask({ endAt: e.currentTarget.value || null })}
+                defaultValue={toLocalInput(paneTask.endAt)}
+                onBlur={(e) => runSave("endAt", { endAt: e.currentTarget.value || null })}
               />
             </Field>
-            <Field label="Logged hours">
+            <Field label="Logged hours" status={fieldStatus["logHours"]}>
               <input
                 type="number"
                 step={0.25}
                 className="border rounded-xl px-3 py-2 w-full"
-                defaultValue={Number(task.logHours || 0)}
-                onBlur={(e) => patchTask({ logHours: parseFloat(e.currentTarget.value || "0") })}
+                defaultValue={Number(paneTask.logHours || 0)}
+                onBlur={(e) => runSave("logHours", { logHours: parseFloat(e.currentTarget.value || "0") })}
               />
             </Field>
           </section>
@@ -210,9 +257,9 @@ export default function TaskPane() {
             <div className="mt-2">
               <SubtaskList
                 key={subVersion} // re-mount after import
-                taskId={task.id}
-                initial={task.subtasks || []}
-                onChange={(items) => updateInPane({ subtasks: items })}
+                taskId={paneTask.id}
+                initial={paneTask.subtasks || []}
+                onChange={(items) => setPaneTask((prev) => (prev ? ({ ...prev, subtasks: items } as TaskDTO) : prev))}
               />
             </div>
           </section>
@@ -239,10 +286,10 @@ export default function TaskPane() {
           {importMsg && <span className="text-xs text-gray-600">{importMsg}</span>}
 
           <div className="ml-auto flex items-center gap-3">
-            <a className="underline text-sm" href={`/api/tasks/${task.id}/export?format=csv`}>
+            <a className="underline text-sm" href={`/api/tasks/${paneTask.id}/export?format=csv`}>
               Export CSV
             </a>
-            <a className="underline text-sm" href={`/api/tasks/${task.id}/export?format=xlsx`}>
+            <a className="underline text-sm" href={`/api/tasks/${paneTask.id}/export?format=xlsx`}>
               Export Excel
             </a>
           </div>
@@ -254,43 +301,53 @@ export default function TaskPane() {
 
 /* ————— presentational building blocks ————— */
 
-function EditableTitle({ title, onSave }: { title: string; onSave: (v: string) => void }) {
+function EditableTitle({ title, onSave, status }: { title: string; onSave: (v: string) => void; status?: InlineStatus }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(title);
+
+  useEffect(() => setVal(title), [title]);
+
   if (!editing) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <h2 className="text-lg font-semibold truncate">{title}</h2>
         <button className="text-xs underline" onClick={() => setEditing(true)}>
           Edit
         </button>
+        <StatusInline status={status} />
       </div>
     );
   }
   return (
-    <input
-      className="text-lg font-semibold border-b border-gray-300 focus:border-black outline-none w-full"
-      value={val}
-      onChange={(e) => setVal(e.target.value)}
-      onBlur={() => {
-        setEditing(false);
-        if (val !== title) onSave(val);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          (e.currentTarget as HTMLInputElement).blur();
-        }
-      }}
-      autoFocus
-    />
+    <div className="flex items-center gap-2">
+      <input
+        className="text-lg font-semibold border-b border-gray-300 focus:border-black outline-none w-full"
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={() => {
+          setEditing(false);
+          if (val !== title) onSave(val);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            (e.currentTarget as HTMLInputElement).blur();
+          }
+        }}
+        autoFocus
+      />
+      <StatusInline status={status} />
+    </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, status }: { label: string; children: React.ReactNode; status?: InlineStatus }) {
   return (
     <label className="text-xs block">
-      <div className="mb-1 text-gray-600">{label}</div>
+      <div className="mb-1 text-gray-600 flex items-center gap-2">
+        <span>{label}</span>
+      </div>
       {children}
+      <StatusInline status={status} />
     </label>
   );
 }
@@ -302,6 +359,7 @@ function MetaField({
   options,
   readOnly,
   step,
+  status,
   onBlur,
 }: {
   label: string;
@@ -310,10 +368,11 @@ function MetaField({
   options?: string[];
   readOnly?: boolean;
   step?: number;
+  status?: InlineStatus;
   onBlur: (val: any) => void;
 }) {
   return (
-    <Field label={label}>
+    <Field label={label} status={status}>
       {readOnly ? (
         <div className="px-3 py-2 bg-gray-50 rounded-xl border">{value || "—"}</div>
       ) : type === "select" ? (
@@ -352,4 +411,32 @@ function MetaField({
       )}
     </Field>
   );
+}
+
+function StatusInline({ status }: { status?: InlineStatus }) {
+  if (!status || status.state === "idle") return null;
+  if (status.state === "saving") {
+    return (
+      <span className="text-[11px] text-gray-600 inline-flex items-center gap-1 mt-1">
+        <span className="inline-block h-3 w-3 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" aria-hidden="true" />
+        Saving…
+      </span>
+    );
+  }
+  if (status.state === "success") {
+    return <span className="text-[11px] text-green-600 inline-flex items-center gap-1 mt-1">Saved</span>;
+  }
+  if (status.state === "error") {
+    return (
+      <span className="text-[11px] text-red-600 inline-flex items-center gap-2 mt-1">
+        <span>{status.message || "Save failed"}</span>
+        {status.retry && (
+          <button className="underline text-[11px]" type="button" onClick={status.retry}>
+            Retry
+          </button>
+        )}
+      </span>
+    );
+  }
+  return null;
 }

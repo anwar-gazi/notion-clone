@@ -1,10 +1,7 @@
 "use client";
 import { useDraggable } from "@dnd-kit/core";
-import { useState } from "react";
 //import SubtaskList from "./SubtaskList";
 import React from "react";
-import { useTaskPane } from "./TaskPaneProvider";
-import { useTaskById } from "./BoardContext";
 import { TaskDTO } from "@/types/data";
 //import { TaskData } from "@/types/data";
 
@@ -14,15 +11,12 @@ import { TaskDTO } from "@/types/data";
  * @returns 
  * @requires BoardProvider gets data from the board context provider
  */
-export default function TaskCard({ task }: { task: TaskDTO }) {
-  const { openPane } = useTaskPane();
+export default function TaskCard({ task, onOpen }: { task: TaskDTO; onOpen: (taskId: string) => void }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: task.id,
     data: { type: 'task', columnId: task.columnId },
   });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
-
-  // const [expanded, setExpanded] = useState(false);
 
   // ✅ compute counts from subtasks (fallback to precomputed fields if present)
   const total = task.subtasks.length;
@@ -39,8 +33,8 @@ export default function TaskCard({ task }: { task: TaskDTO }) {
       tabIndex={0}
       style={style}
       title="Click to open details"
-      onClick={() => openPane(task)}
-      onKeyDown={(e) => e.key === "Enter" && openPane(task)}
+      onClick={() => onOpen(task.id)}
+      onKeyDown={(e) => e.key === "Enter" && onOpen(task.id)}
       aria-describedby=""
       aria-disabled="false"
       aria-roledescription="draggable"

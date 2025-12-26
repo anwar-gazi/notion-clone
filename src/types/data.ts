@@ -5,7 +5,7 @@ export type BoardContextDTO = {
   board: BoardDTO; // board data
 
   // actions
-  patchTask: (id: string, patch: Partial<TaskDTO>) => void;
+  patchTask: (id: string, patch: Partial<TaskDTO>) => Promise<void>;
   createTask: (
     payload: Partial<TaskDTO> & { columnId: string; boardId?: string; parentTaskId?: string | null }
   ) => Promise<TaskDTO>;

@@ -10,7 +10,7 @@ import { useBoard, useTasksInColumn } from "./BoardContext";
  * @param param0 
  * @returns 
  */
-export default function Column({ column }: { column: ColumnDTO }) {
+export default function Column({ column, onOpenTask }: { column: ColumnDTO; onOpenTask: (id: string) => void }) {
   const tasks = useTasksInColumn(column.id).filter(t => !t.parentTaskId);
   const boardCtx = useBoard();
   const [showModal, setShowModal] = useState(false);
@@ -125,7 +125,7 @@ export default function Column({ column }: { column: ColumnDTO }) {
         className={`space-y-3 min-h-[40px] p-1 rounded flex-1 ${isOver ? "ring-2 ring-black/40" : ""
           }`}
       >
-        {tasks.map((task: TaskDTO) => (<TaskCard key={task.id} task={task} />))}
+        {tasks.map((task: TaskDTO) => (<TaskCard key={task.id} task={task} onOpen={onOpenTask} />))}
       </div>
       <footer className="mt-3 pt-3 border-t border-dashed border-gray-200">
         <button

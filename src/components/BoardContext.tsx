@@ -112,11 +112,19 @@ export function BoardProvider({ initial, children }: { initial: BoardDTO, childr
 
     const patchTask = useCallback(async (id: Id, patch: Partial<TaskDTO>) => {
         dispatch({ type: "PATCH_TASK", id, patch });
-        await fetch("/api/tasks", {
+        const res = await fetch("/api/tasks", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id, ...patch }),
         });
+        if (!res.ok) {
+            let msg = "Update failed";
+            try {
+                const j = await res.json();
+                msg = j?.error || msg;
+            } catch { /* ignore */ }
+            throw new Error(msg);
+        }
     }, [dispatch]);
 
     const moveTask = useCallback(async (id: Id, toColumnId: Id) => {
