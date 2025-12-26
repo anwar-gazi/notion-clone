@@ -154,7 +154,7 @@ export default function TaskPane({ taskId, onClose }: { taskId: string | null; o
         key={paneTask.id}
         role="dialog"
         aria-modal="true"
-        className="fixed right-0 top-0 h-full w-full max-w-xl bg-white z-50 shadow-2xl flex flex-col"
+        className="fixed right-0 top-0 h-full w-full md:w-1/2 bg-white z-50 shadow-2xl flex flex-col"
       >
         {/* Header */}
         <div className="p-4 border-b flex items-start justify-between gap-3">
