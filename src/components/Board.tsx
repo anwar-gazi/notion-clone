@@ -1,7 +1,7 @@
 // src/components/Board.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Column from "./Column";
 import { BoardDTO, ColumnDTO } from "@/types/data";
 import { BoardProvider } from "./BoardContext";
@@ -9,6 +9,25 @@ import TaskPane from "./TaskPane";
 
 export default function Board({ board }: { board: BoardDTO }) {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+
+  // Restore open task pane across refreshes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("openTaskId");
+    if (saved && board.tasks[saved]) {
+      setActiveTaskId(saved);
+    }
+  }, [board.tasks]);
+
+  // Persist open task
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (activeTaskId) {
+      window.localStorage.setItem("openTaskId", activeTaskId);
+    } else {
+      window.localStorage.removeItem("openTaskId");
+    }
+  }, [activeTaskId]);
 
   return (
     <BoardProvider initial={board}>
