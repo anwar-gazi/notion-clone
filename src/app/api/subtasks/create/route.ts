@@ -7,13 +7,28 @@ import { toTaskDTO } from "@/lib/serialize";
  * @param req 
  */
 export async function POST(req: Request) {
-    const body: { parentTaskId: string, title: string } = await req.json();
-    const sub = await prisma.task.create({
-        data: {
-            parentTaskId: body.parentTaskId,
-            title: body.title
+    try {
+        const body: { parentTaskId: string, title: string } = await req.json();
+        if (!body.parentTaskId || !body.title) {
+            return NextResponse.json({ error: "parentTaskId and title required" }, { status: 400 });
         }
-    });
 
-    return NextResponse.json(toTaskDTO(sub));
+        const parent = await prisma.task.findUnique({ where: { id: body.parentTaskId } });
+        if (!parent) {
+            return NextResponse.json({ error: "Parent task not found" }, { status: 404 });
+        }
+
+        const sub = await prisma.task.create({
+            data: {
+                title: body.title,
+                parent: { connect: { id: parent.id } },
+                board: { connect: { id: parent.boardId } },
+                column: { connect: { id: parent.columnId } },
+            }
+        });
+
+        return NextResponse.json(toTaskDTO(sub));
+    } catch (e: any) {
+        return NextResponse.json({ error: e?.message || "Create failed" }, { status: 400 });
+    }
 }
