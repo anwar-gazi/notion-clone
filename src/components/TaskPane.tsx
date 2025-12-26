@@ -173,11 +173,18 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
           <div className="text-xs text-gray-500 flex items-center gap-1 flex-wrap mb-1">
             {breadcrumbs.map((item, idx) => {
               const isLast = idx === breadcrumbs.length - 1;
+              const isParent = !isLast && idx === breadcrumbs.length - 2;
               return (
                 <span key={item.id} className="flex items-center gap-1">
                   <button
                     type="button"
-                    className={`underline ${isLast ? "text-[13px] font-semibold text-gray-800" : "text-[11px] font-medium text-gray-600"}`}
+                    className={`underline ${
+                      isLast
+                        ? "text-[11px] text-gray-800"
+                        : isParent
+                        ? "text-[14px] font-bold text-gray-900"
+                        : "text-[11px] text-gray-600"
+                    }`}
                     onClick={() => onOpenTask(item.id)}
                   >
                     {item.title || "Untitled"}
