@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import SubtaskList from "./SubtaskList";
 import { useBoard } from "./BoardContext";
 import { TaskDTO } from "@/types/data";
@@ -171,18 +171,21 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
       <div className="p-4 border-b flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs text-gray-500 flex items-center gap-1 flex-wrap mb-1">
-            {breadcrumbs.map((item, idx) => (
-              <span key={item.id} className="flex items-center gap-1">
-                <button
-                  type="button"
-                  className={`underline ${idx === breadcrumbs.length - 1 ? "font-semibold text-gray-800" : ""}`}
-                  onClick={() => onOpenTask(item.id)}
-                >
-                  {item.title || "Untitled"}
-                </button>
-                {idx < breadcrumbs.length - 1 && <span className="text-gray-400">›</span>}
-              </span>
-            ))}
+            {breadcrumbs.map((item, idx) => {
+              const isLast = idx === breadcrumbs.length - 1;
+              return (
+                <span key={item.id} className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    className={`underline ${isLast ? "text-[13px] font-semibold text-gray-800" : "text-[11px] font-medium text-gray-600"}`}
+                    onClick={() => onOpenTask(item.id)}
+                  >
+                    {item.title || "Untitled"}
+                  </button>
+                  {idx < breadcrumbs.length - 1 && <span className="text-gray-400">›</span>}
+                </span>
+              );
+            })}
           </div>
           <EditableTitle
             title={paneTask.title}

@@ -77,22 +77,9 @@ export default function SubtaskList({
                 toggle(s.id, e.target.checked);
               }}
             />
-            <input
-              className="flex-1 border rounded px-2 py-1"
-              defaultValue={s.title}
-              onClick={(e) => e.stopPropagation()}
-              onBlur={(e) => patch(s.id, { title: e.currentTarget.value })}
-            />
-            <button
-              type="button"
-              className="text-xs text-gray-500 underline"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenTask?.(s.id);
-              }}
-            >
-              Open
-            </button>
+            <span className="flex-1 px-2 py-1 rounded" onClick={(e) => { e.stopPropagation(); onOpenTask?.(s.id); }}>
+              {s.title}
+            </span>
           </label>
         ))}
       </div>
