@@ -92,6 +92,20 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     [board, paneTask, markSuccessTimeout]
   );
 
+  const commitIfChanged = useCallback(
+    (key: keyof TaskDTO | string, next: any) => {
+      if (!paneTask) return;
+      const current = (paneTask as any)[key];
+      const same =
+        Array.isArray(current) || Array.isArray(next)
+          ? JSON.stringify(current ?? []) === JSON.stringify(next ?? [])
+          : (current ?? "") === (next ?? "");
+      if (same) return;
+      runSave(key as string, { [key]: next } as any);
+    },
+    [paneTask, runSave]
+  );
+
   async function handleImport(file: File) {
     if (!paneTask) return;
     setUploading(true);
@@ -222,7 +236,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                 className="w-full border rounded-xl p-3"
                 rows={6}
                 defaultValue={paneTask.description || ""}
-                onBlur={(e) => runSave("description", { description: e.currentTarget.value })}
+                onBlur={(e) => commitIfChanged("description", e.currentTarget.value)}
                 placeholder="Describe the task. Markdown supported."
               />
             </Field>
@@ -242,10 +256,10 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                   readOnly={(m as any).readOnly}
                   step={(m as any).step}
                   status={fieldStatus[m.key as string]}
-                  onBlur={(val: any) => {
+                  onCommit={(val: any) => {
                     if ((m as any).readOnly) return;
                     const v = m.toSend ? m.toSend(val) : val;
-                    runSave(m.key as string, { [m.key]: v } as any);
+                    commitIfChanged(m.key as string, v);
                   }}
                 />
               ))}
@@ -259,7 +273,12 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                 type="datetime-local"
                 className="border rounded-xl px-3 py-2 w-full"
                 defaultValue={toLocalInput(paneTask.startAt)}
-                onBlur={(e) => runSave("startAt", { startAt: e.currentTarget.value || null })}
+                onBlur={(e) => commitIfChanged("startAt", e.currentTarget.value || null)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    commitIfChanged("startAt", (e.currentTarget as HTMLInputElement).value || null);
+                  }
+                }}
               />
             </Field>
             <Field label="End time" status={fieldStatus["endAt"]}>
@@ -267,7 +286,12 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                 type="datetime-local"
                 className="border rounded-xl px-3 py-2 w-full"
                 defaultValue={toLocalInput(paneTask.endAt)}
-                onBlur={(e) => runSave("endAt", { endAt: e.currentTarget.value || null })}
+                onBlur={(e) => commitIfChanged("endAt", e.currentTarget.value || null)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    commitIfChanged("endAt", (e.currentTarget as HTMLInputElement).value || null);
+                  }
+                }}
               />
             </Field>
             <Field label="Logged hours" status={fieldStatus["logHours"]}>
@@ -276,7 +300,12 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                 step={0.25}
                 className="border rounded-xl px-3 py-2 w-full"
                 defaultValue={Number(paneTask.logHours || 0)}
-                onBlur={(e) => runSave("logHours", { logHours: parseFloat(e.currentTarget.value || "0") })}
+                onBlur={(e) => commitIfChanged("logHours", parseFloat(e.currentTarget.value || "0"))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    commitIfChanged("logHours", parseFloat((e.currentTarget as HTMLInputElement).value || "0"));
+                  }
+                }}
               />
             </Field>
           </section>
@@ -396,7 +425,7 @@ function MetaField({
   readOnly,
   step,
   status,
-  onBlur,
+  onCommit,
 }: {
   label: string;
   value: any;
@@ -405,7 +434,7 @@ function MetaField({
   readOnly?: boolean;
   step?: number;
   status?: InlineStatus;
-  onBlur: (val: any) => void;
+  onCommit: (val: any) => void;
 }) {
   return (
     <Field label={label} status={status}>
@@ -415,7 +444,7 @@ function MetaField({
         <select
           className="border rounded-xl px-3 py-2 w-full"
           defaultValue={value || ""}
-          onChange={(e) => onBlur(e.currentTarget.value || undefined)}
+          onChange={(e) => onCommit(e.currentTarget.value || undefined)}
         >
           {options?.map((o) => (
             <option key={o} value={o}>
@@ -429,20 +458,26 @@ function MetaField({
           step={step || 1}
           className="border rounded-xl px-3 py-2 w-full"
           defaultValue={value ?? 0}
-          onBlur={(e) => onBlur(parseFloat(e.currentTarget.value || "0"))}
+          onBlur={(e) => onCommit(parseFloat(e.currentTarget.value || "0"))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onCommit(parseFloat((e.currentTarget as HTMLInputElement).value || "0"));
+          }}
         />
       ) : type === "textarea" ? (
         <textarea
           className="border rounded-xl px-3 py-2 w-full"
           rows={3}
           defaultValue={value || ""}
-          onBlur={(e) => onBlur(e.currentTarget.value)}
+          onBlur={(e) => onCommit(e.currentTarget.value)}
         />
       ) : (
         <input
           className="border rounded-xl px-3 py-2 w-full"
           defaultValue={value || ""}
-          onBlur={(e) => onBlur(e.currentTarget.value)}
+          onBlur={(e) => onCommit(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onCommit((e.currentTarget as HTMLInputElement).value);
+          }}
         />
       )}
     </Field>
