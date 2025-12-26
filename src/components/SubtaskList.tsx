@@ -77,7 +77,10 @@ export default function SubtaskList({
                 toggle(s.id, e.target.checked);
               }}
             />
-            <span className="flex-1 px-2 py-1 rounded" onClick={(e) => { e.stopPropagation(); onOpenTask?.(s.id); }}>
+            <span
+              className={`flex-1 px-2 py-1 rounded ${s.closedAt ? "line-through text-gray-400" : ""}`}
+              onClick={(e) => { e.stopPropagation(); onOpenTask?.(s.id); }}
+            >
               {s.title}
             </span>
           </label>
