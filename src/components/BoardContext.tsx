@@ -23,6 +23,20 @@ function reducer(state: BoardDTO, action: Actions): BoardDTO {
         case "HYDRATE":
             return action.data;
 
+        case "ADD_TASK": {
+            const task = action.task;
+            const col = state.columns[task.columnId || ""];
+            if (!col) return state;
+            return {
+                ...state,
+                tasks: { ...state.tasks, [task.id]: task },
+                columns: {
+                    ...state.columns,
+                    [col.id]: { ...col, taskIds: [...col.taskIds, task.id] },
+                },
+            };
+        }
+
         case "PATCH_TASK": {
             const t = state.tasks[action.id];
             if (!t) return state;
@@ -82,6 +96,20 @@ const BoardContxt = createContext<BoardContextDTO | null>(null);
 export function BoardProvider({ initial, children }: { initial: BoardDTO, children: React.ReactNode }): JSX.Element {
     const [board, dispatch] = useReducer(reducer, initial);
 
+    const createTask = useCallback(async (payload: Partial<TaskDTO> & { columnId: Id; boardId?: string; parentTaskId?: string | null }) => {
+        const res = await fetch("/api/tasks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        const created: TaskDTO = await res.json();
+        if (!res.ok) {
+            throw new Error((created as any)?.error || "Unable to create task");
+        }
+        dispatch({ type: "ADD_TASK", task: created });
+        return created;
+    }, [dispatch]);
+
     const patchTask = useCallback(async (id: Id, patch: Partial<TaskDTO>) => {
         dispatch({ type: "PATCH_TASK", id, patch });
         await fetch("/api/tasks", {
@@ -111,7 +139,10 @@ export function BoardProvider({ initial, children }: { initial: BoardDTO, childr
         });
     }, [patchTask]);
 
-    const contextValue: BoardContextDTO = useMemo(() => ({ board, patchTask, moveTask, saveTask }), [board, patchTask, moveTask, saveTask]);
+    const contextValue: BoardContextDTO = useMemo(
+        () => ({ board, createTask, patchTask, moveTask, saveTask }),
+        [board, createTask, patchTask, moveTask, saveTask]
+    );
 
     /**
      * Now DnD: Drag-n-Drop setup

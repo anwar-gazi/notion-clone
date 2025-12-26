@@ -6,6 +6,9 @@ export type BoardContextDTO = {
 
   // actions
   patchTask: (id: string, patch: Partial<TaskDTO>) => void;
+  createTask: (
+    payload: Partial<TaskDTO> & { columnId: string; boardId?: string; parentTaskId?: string | null }
+  ) => Promise<TaskDTO>;
   moveTask: (id: string, toColumnId: string) => void;
   // optional server syncs
   saveTask: (id: string, patch: Partial<TaskDTO>) => Promise<void>;
@@ -65,6 +68,7 @@ export type TaskDTO = {
 
 
 export type Actions =
+  | { type: "ADD_TASK"; task: TaskDTO }
   | { type: "PATCH_TASK"; id: string; patch: Partial<TaskDTO> }
   | { type: "MOVE_TASK"; id: string; toColumnId: string }
   | { type: "HYDRATE"; data: BoardDTO };

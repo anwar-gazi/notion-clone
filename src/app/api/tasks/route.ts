@@ -23,15 +23,22 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    if (!body?.title) return NextResponse.json({ error: "title required" }, { status: 400 });
+    if (!body?.columnId) return NextResponse.json({ error: "columnId required" }, { status: 400 });
+    if (!body?.boardId) return NextResponse.json({ error: "boardId required" }, { status: 400 });
+
     const task = await prisma.task.create({
       data: {
         title: String(body.title),
         description: body.description ?? null,
-        columnId: body.columnId ?? null,
-        parentTaskId: body.parentTaskId ?? null,
+        column: { connect: { id: String(body.columnId) } },
+        board: { connect: { id: String(body.boardId) } },
+        ...(body.parentTaskId
+          ? { parent: { connect: { id: String(body.parentTaskId) } } }
+          : {}),
 
         externalId: body.externalId ?? null,
-        state: body.state ?? null,
+        state: body.state ?? "",
         status: body.status ?? null,
         priority: body.priority ?? null,
         xp: typeof body.xp === "number" ? body.xp : 0,
