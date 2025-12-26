@@ -137,7 +137,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
   const meta = [
     { key: "externalId", label: "ID", readOnly: true },
     { key: "state", label: "State", type: "text" },
-    { key: "status", label: "Status", type: "text" },
+    { key: "status", label: "Status", type: "combo", options: ["Active", "Open", "Closed"] },
     { key: "priority", label: "Priority", type: "select", options: ["", "LOW", "MEDIUM", "HIGH", "CRITICAL"] },
     { key: "xp", label: "XP", type: "number", step: 1 },
     {
@@ -429,7 +429,7 @@ function MetaField({
 }: {
   label: string;
   value: any;
-  type?: "text" | "number" | "select" | "textarea";
+  type?: "text" | "number" | "select" | "textarea" | "combo";
   options?: string[];
   readOnly?: boolean;
   step?: number;
@@ -440,6 +440,8 @@ function MetaField({
     <Field label={label} status={status}>
       {readOnly ? (
         <div className="px-3 py-2 bg-gray-50 rounded-xl border">{value || "—"}</div>
+      ) : type === "combo" ? (
+        <ComboField value={value} options={options || []} onCommit={onCommit} />
       ) : type === "select" ? (
         <select
           className="border rounded-xl px-3 py-2 w-full"
@@ -481,6 +483,33 @@ function MetaField({
         />
       )}
     </Field>
+  );
+}
+
+function ComboField({ value, options, onCommit }: { value: string; options: string[]; onCommit: (v: string) => void }) {
+  const [input, setInput] = useState(value || "");
+  const merged = useMemo(() => Array.from(new Set([...(options || []), input || ""])).filter(Boolean), [options, input]);
+  return (
+    <div className="relative">
+      <input
+        className="border rounded-xl px-3 py-2 w-full"
+        list="status-options"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onBlur={(e) => onCommit(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            onCommit(input);
+          }
+        }}
+        placeholder="Status"
+      />
+      <datalist id="status-options">
+        {merged.map((o) => (
+          <option key={o} value={o} />
+        ))}
+      </datalist>
+    </div>
   );
 }
 
