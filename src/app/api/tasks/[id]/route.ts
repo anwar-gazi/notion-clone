@@ -14,6 +14,6 @@ export async function GET(_req: Request, ctx: { params: { id: string } }) {
 
 export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
   const { id } = ctx.params;
-  await prisma.task.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+  await prisma.task.update({ where: { id }, data: { closedAt: new Date() } });
+  return NextResponse.json({ ok: true, closedAt: new Date().toISOString() });
 }

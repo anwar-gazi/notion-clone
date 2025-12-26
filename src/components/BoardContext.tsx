@@ -96,7 +96,7 @@ const BoardContxt = createContext<BoardContextDTO | null>(null);
 export function BoardProvider({ initial, children }: { initial: BoardDTO, children: React.ReactNode }): JSX.Element {
     const [board, dispatch] = useReducer(reducer, initial);
 
-    const createTask = useCallback(async (payload: Partial<TaskDTO> & { columnId: Id; boardId?: string; parentTaskId?: string | null }) => {
+  const createTask = useCallback(async (payload: Partial<TaskDTO> & { columnId: Id; boardId?: string; parentTaskId?: string | null }) => {
         const res = await fetch("/api/tasks", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -136,6 +136,19 @@ export function BoardProvider({ initial, children }: { initial: BoardDTO, childr
         });
     }, [dispatch]);
 
+    const deleteTask = useCallback(async (id: Id) => {
+        dispatch({ type: "PATCH_TASK", id, patch: { closedAt: new Date().toISOString() } as any });
+        const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+        if (!res.ok) {
+            let msg = "Delete failed";
+            try {
+                const j = await res.json();
+                msg = j?.error || msg;
+            } catch { /* ignore */ }
+            throw new Error(msg);
+        }
+    }, []);
+
     const saveTask = useCallback(async (id: Id, patch: Partial<TaskDTO>) => {
         // optimistic update first
         //patchTask(id, patch);
@@ -148,8 +161,8 @@ export function BoardProvider({ initial, children }: { initial: BoardDTO, childr
     }, [patchTask]);
 
     const contextValue: BoardContextDTO = useMemo(
-        () => ({ board, createTask, patchTask, moveTask, saveTask }),
-        [board, createTask, patchTask, moveTask, saveTask]
+        () => ({ board, createTask, patchTask, moveTask, deleteTask, saveTask }),
+        [board, createTask, patchTask, moveTask, deleteTask, saveTask]
     );
 
     /**

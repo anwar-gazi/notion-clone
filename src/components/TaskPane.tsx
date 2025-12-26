@@ -330,7 +330,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
           </section>
         </div>
 
-        {/* Footer: Import + Export */}
+        {/* Footer: Import + Export + Delete */}
         <div className="p-4 border-t flex flex-wrap items-center gap-3">
           <input
             ref={fileRef}
@@ -357,6 +357,25 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
             <a className="underline text-sm" href={`/api/tasks/${paneTask.id}/export?format=xlsx`}>
               Export Excel
             </a>
+            <button
+              type="button"
+              className="text-sm text-red-600 flex items-center gap-1 hover:underline"
+              onClick={async () => {
+                if (!paneTask) return;
+                const ok = window.confirm("Archive this task? This will mark it closed.");
+                if (!ok) return;
+                try {
+                  await board?.deleteTask(paneTask.id);
+                  onClose();
+                } catch (e: any) {
+                  alert(e?.message || "Failed to delete task");
+                }
+              }}
+              aria-label="Delete task"
+              title="Soft delete (mark closed)"
+            >
+              🗑 Delete
+            </button>
           </div>
         </div>
       </aside>

@@ -9,6 +9,7 @@ export type BoardContextDTO = {
   createTask: (
     payload: Partial<TaskDTO> & { columnId: string; boardId?: string; parentTaskId?: string | null }
   ) => Promise<TaskDTO>;
+  deleteTask: (id: string) => Promise<void>;
   moveTask: (id: string, toColumnId: string) => void;
   // optional server syncs
   saveTask: (id: string, patch: Partial<TaskDTO>) => Promise<void>;
