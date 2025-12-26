@@ -78,6 +78,13 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     }
     return items;
   }, [paneTask, board?.board.tasks]);
+  const closureLogs = useMemo(
+    () =>
+      (paneTask?.closureLogs || []).slice().sort((a, b) => {
+        return new Date(a.closedAt).getTime() - new Date(b.closedAt).getTime();
+      }),
+    [paneTask?.closureLogs]
+  );
 
   const markSuccessTimeout = useCallback((key: string) => {
     setTimeout(() => {
@@ -237,11 +244,11 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
           />
           <div className="text-xs text-gray-500 mt-1 space-y-2">
             <div>Created: {dtLabel(paneTask.createdAt)}</div>
-            {paneTask.closureLogs?.length > 0 && (
+            {closureLogs.length > 0 && (
               <div className="space-y-1">
-                {paneTask.closureLogs.map((log) => (
+                {closureLogs.map((log, idx) => (
                   <div key={log.id} className="flex flex-col text-[11px] text-gray-700 border rounded px-2 py-1 bg-gray-50">
-                    <div>Closed: {dtLabel(log.closedAt)}</div>
+                    <div>{idx === 0 ? "Closed" : "Closed again"}: {dtLabel(log.closedAt)}</div>
                     {log.reopenedAt && <div>Reopened: {dtLabel(log.reopenedAt)}</div>}
                     {log.reopenReason && <div className="text-gray-800">Reason: {log.reopenReason}</div>}
                   </div>
