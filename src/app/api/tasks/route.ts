@@ -12,7 +12,10 @@ export async function GET(req: Request) {
   const tasks = await prisma.task.findMany({
     where,
     orderBy: [{ createdAt: "asc" }],
-    include: { subtasks: true },
+    include: {
+      closureLogs: { orderBy: { closedAt: "desc" } },
+      subtasks: { include: { closureLogs: { orderBy: { closedAt: "desc" } } } },
+    },
   });
 
 
@@ -52,7 +55,10 @@ export async function POST(req: Request) {
         logHours: typeof body.logHours === "number" ? body.logHours : 0,
         closedAt: body.closedAt ? new Date(body.closedAt) : null,
       },
-      include: { subtasks: true },
+      include: {
+        closureLogs: { orderBy: { closedAt: "desc" } },
+        subtasks: { include: { closureLogs: { orderBy: { closedAt: "desc" } } } },
+      },
     });
     return NextResponse.json(toTaskDTO(task));
   } catch (e: any) {
@@ -94,7 +100,14 @@ export async function PATCH(req: Request) {
     if (body.completed) data.closedAt = new Date();
 
 
-    const updated = await prisma.task.update({ where: { id: body.id }, data, include: { subtasks: true } });
+    const updated = await prisma.task.update({
+      where: { id: body.id },
+      data,
+      include: {
+        closureLogs: { orderBy: { closedAt: "desc" } },
+        subtasks: { include: { closureLogs: { orderBy: { closedAt: "desc" } } } },
+      }
+    });
     return NextResponse.json(toTaskDTO(updated));
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Update failed" }, { status: 400 });

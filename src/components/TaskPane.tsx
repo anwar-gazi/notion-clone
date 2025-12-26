@@ -40,13 +40,17 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
   const [importMsg, setImportMsg] = useState<string>("");
   const [subVersion, setSubVersion] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [showReopenModal, setShowReopenModal] = useState(false);
+  const [reopenReason, setReopenReason] = useState("");
 
   useEffect(() => {
     setPaneTask(taskFromBoard || null);
     setFieldStatus({});
     setImportMsg("");
     setSubVersion((v) => v + 1);
-  }, [taskId, taskFromBoard?.id]);
+    setShowReopenModal(false);
+    setReopenReason("");
+  }, [taskId, taskFromBoard]);
   const breadcrumbs = useMemo(() => {
     const items: TaskDTO[] = [];
     let current: TaskDTO | null = paneTask;
@@ -211,15 +215,25 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
           </div>
           <EditableTitle
             title={paneTask.title}
-              onSave={(title) => runSave("title", { title })}
-              status={fieldStatus["title"]}
-              disabled={isClosed}
-            />
-            <div className="text-xs text-gray-500 mt-1">
-              Created: {dtLabel(paneTask.createdAt)}
-              {paneTask.closedAt && <> • Closed: {dtLabel(paneTask.closedAt)}</>}
-            </div>
+            onSave={(title) => runSave("title", { title })}
+            status={fieldStatus["title"]}
+            disabled={isClosed}
+          />
+          <div className="text-xs text-gray-500 mt-1 space-y-2">
+            <div>Created: {dtLabel(paneTask.createdAt)}</div>
+            {paneTask.closureLogs?.length > 0 && (
+              <div className="space-y-1">
+                {paneTask.closureLogs.map((log) => (
+                  <div key={log.id} className="flex flex-col text-[11px] text-gray-700 border rounded px-2 py-1 bg-gray-50">
+                    <div>Closed: {dtLabel(log.closedAt)}</div>
+                    {log.reopenedAt && <div>Reopened: {dtLabel(log.reopenedAt)}</div>}
+                    {log.reopenReason && <div className="text-gray-800">Reason: {log.reopenReason}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+        </div>
           <button
             className="rounded-full w-8 h-8 flex items-center justify-center hover:bg-gray-100"
             onClick={onClose}
@@ -361,28 +375,84 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
             <a className="underline text-sm" href={`/api/tasks/${paneTask.id}/export?format=xlsx`}>
               Export Excel
             </a>
-            <button
-              type="button"
-              className="text-sm text-red-600 flex items-center gap-1 hover:underline"
-              onClick={async () => {
-                if (!paneTask) return;
-                const ok = window.confirm("Archive this task? This will mark it closed.");
-                if (!ok) return;
-                try {
-                  await board?.deleteTask(paneTask.id);
-                  onClose();
-                } catch (e: any) {
-                  alert(e?.message || "Failed to delete task");
-                }
-              }}
-              aria-label="Delete task"
-              title="Soft delete (mark closed)"
-            >
-              🗑 Delete
-            </button>
+            {!isClosed ? (
+              <button
+                type="button"
+                className="text-sm text-red-600 flex items-center gap-1 hover:underline"
+                onClick={async () => {
+                  if (!paneTask) return;
+                  const ok = window.confirm("Archive this task? This will mark it closed.");
+                  if (!ok) return;
+                  try {
+                    await board?.deleteTask(paneTask.id);
+                    onClose();
+                  } catch (e: any) {
+                    alert(e?.message || "Failed to delete task");
+                  }
+                }}
+                aria-label="Delete task"
+                title="Soft delete (mark closed)"
+              >
+                🗑 Delete
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="text-sm text-blue-700 flex items-center gap-1 hover:underline"
+                onClick={() => setShowReopenModal(true)}
+                aria-label="Reopen task"
+                title="Reopen task"
+              >
+                ↺ Reopen
+              </button>
+            )}
           </div>
         </div>
       </aside>
+
+      {showReopenModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowReopenModal(false)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md p-5 space-y-4">
+            <h3 className="text-sm font-semibold">Reopen task</h3>
+            <p className="text-sm text-gray-600">Provide a reason for reopening. It will be logged with the task.</p>
+            <textarea
+              className="w-full border rounded-lg px-3 py-2"
+              rows={3}
+              value={reopenReason}
+              onChange={(e) => setReopenReason(e.target.value)}
+              placeholder="Reason for reopening"
+            />
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="px-3 py-2 text-sm border rounded-lg hover:bg-gray-50"
+                onClick={() => setShowReopenModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white disabled:opacity-50"
+                disabled={!reopenReason.trim()}
+                onClick={async () => {
+                  if (!paneTask || !reopenReason.trim()) return;
+                  try {
+                    const updated = await board?.reopenTask(paneTask.id, reopenReason.trim());
+                    if (updated) setPaneTask(updated);
+                    setShowReopenModal(false);
+                    setReopenReason("");
+                  } catch (e: any) {
+                    alert(e?.message || "Failed to reopen");
+                  }
+                }}
+              >
+                Confirm reopen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -468,11 +538,12 @@ function MetaField({
       {readOnly ? (
         <div className="px-3 py-2 bg-gray-50 rounded-xl border">{value || "—"}</div>
       ) : type === "combo" ? (
-        <ComboField value={value} options={options || []} onCommit={onCommit} />
+        <ComboField value={value} options={options || []} onCommit={onCommit} disabled={disabled} />
       ) : type === "select" ? (
         <select
           className="border rounded-xl px-3 py-2 w-full"
           defaultValue={value || ""}
+          disabled={disabled}
           onChange={(e) => onCommit(e.currentTarget.value || undefined)}
         >
           {options?.map((o) => (
@@ -487,6 +558,7 @@ function MetaField({
           step={step || 1}
           className="border rounded-xl px-3 py-2 w-full"
           defaultValue={value ?? 0}
+          disabled={disabled}
           onBlur={(e) => onCommit(parseFloat(e.currentTarget.value || "0"))}
           onKeyDown={(e) => {
             if (e.key === "Enter") onCommit(parseFloat((e.currentTarget as HTMLInputElement).value || "0"));
@@ -497,12 +569,14 @@ function MetaField({
           className="border rounded-xl px-3 py-2 w-full"
           rows={3}
           defaultValue={value || ""}
+          disabled={disabled}
           onBlur={(e) => onCommit(e.currentTarget.value)}
         />
       ) : (
         <input
           className="border rounded-xl px-3 py-2 w-full"
           defaultValue={value || ""}
+          disabled={disabled}
           onBlur={(e) => onCommit(e.currentTarget.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") onCommit((e.currentTarget as HTMLInputElement).value);

@@ -146,7 +146,29 @@ export function BoardProvider({ initial, children }: { initial: BoardDTO, childr
                 msg = j?.error || msg;
             } catch { /* ignore */ }
             throw new Error(msg);
+        } else {
+            const updated: TaskDTO = await res.json();
+            dispatch({ type: "PATCH_TASK", id, patch: updated });
         }
+    }, []);
+
+    const reopenTask = useCallback(async (id: Id, reason: string) => {
+        const res = await fetch(`/api/tasks/${id}/reopen`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reason }),
+        });
+        if (!res.ok) {
+            let msg = "Reopen failed";
+            try {
+                const j = await res.json();
+                msg = j?.error || msg;
+            } catch { /* ignore */ }
+            throw new Error(msg);
+        }
+        const updated: TaskDTO = await res.json();
+        dispatch({ type: "PATCH_TASK", id, patch: updated });
+        return updated;
     }, []);
 
     const saveTask = useCallback(async (id: Id, patch: Partial<TaskDTO>) => {
@@ -161,8 +183,8 @@ export function BoardProvider({ initial, children }: { initial: BoardDTO, childr
     }, [patchTask]);
 
     const contextValue: BoardContextDTO = useMemo(
-        () => ({ board, createTask, patchTask, moveTask, deleteTask, saveTask }),
-        [board, createTask, patchTask, moveTask, deleteTask, saveTask]
+        () => ({ board, createTask, patchTask, moveTask, deleteTask, reopenTask, saveTask }),
+        [board, createTask, patchTask, moveTask, deleteTask, reopenTask, saveTask]
     );
 
     /**

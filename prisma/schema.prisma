@@ -134,6 +134,7 @@ model Task {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   closedAt  DateTime?
+  closureLogs TaskClosureLog[]
   startAt   DateTime?
   endAt     DateTime?
   logHours  Decimal   @default(0) @db.Decimal(6, 2)
@@ -142,3 +143,14 @@ model Task {
   @@index([columnId])
 }
 
+model TaskClosureLog {
+  id            String   @id @default(cuid())
+  taskId        String
+  task          Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  closedAt      DateTime
+  reopenedAt    DateTime?
+  reopenReason  String?
+  createdAt     DateTime @default(now())
+
+  @@index([taskId])
+}

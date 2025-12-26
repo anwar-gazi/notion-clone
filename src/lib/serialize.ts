@@ -1,7 +1,7 @@
 // src/lib/serialize.ts
 
-import type { Task as DbTask, Priority } from "@prisma/client";
-import { TaskDTO, BoardDTO } from "@/types/data";
+import type { Task as DbTask, Priority, TaskClosureLog } from "@prisma/client";
+import { TaskDTO, BoardDTO, TaskClosureDTO } from "@/types/data";
 
 /**
  * Recursively convert Prisma Decimal/Date/BigInt into JSON-serializable primitives.
@@ -57,8 +57,14 @@ export function toPlain<T>(data: T): T {
 
 
 // Map a DB task + included subtasks -> API DTO (one level of nesting is enough for current UI)
-export function toTaskDTO(t: (DbTask & { subtasks?: DbTask[] }) | null): TaskDTO | null {
+export function toTaskDTO(t: (DbTask & { subtasks?: DbTask[]; closureLogs?: TaskClosureLog[] }) | null): TaskDTO | null {
   if (!t) return null;
+  const logs: TaskClosureDTO[] = (t.closureLogs || []).map((l) => ({
+    id: l.id,
+    closedAt: new Date(l.closedAt).toISOString(),
+    reopenedAt: l.reopenedAt ? new Date(l.reopenedAt).toISOString() : null,
+    reopenReason: l.reopenReason ?? null,
+  }));
   return {
     id: t.id,
     title: t.title,
@@ -82,35 +88,45 @@ export function toTaskDTO(t: (DbTask & { subtasks?: DbTask[] }) | null): TaskDTO
     logHours: t.logHours,
     createdAt: new Date(t.createdAt).toISOString(),
     closedAt: t.closedAt ? new Date(t.closedAt).toISOString() : null,
+    closureLogs: logs,
 
 
-    subtasks: (t.subtasks || []).map((s) => ({
-      id: s.id,
-      title: s.title,
-      description: s.description ?? null,
-      columnId: s.columnId ?? null,
-      parentTaskId: s.parentTaskId ?? null,
+    subtasks: (t.subtasks || []).map((s) => {
+      const subLogs: TaskClosureDTO[] = ((s as any).closureLogs || []).map((l: any) => ({
+        id: l.id,
+        closedAt: new Date(l.closedAt).toISOString(),
+        reopenedAt: l.reopenedAt ? new Date(l.reopenedAt).toISOString() : null,
+        reopenReason: l.reopenReason ?? null,
+      }));
+      return {
+        id: s.id,
+        title: s.title,
+        description: s.description ?? null,
+        columnId: s.columnId ?? null,
+        parentTaskId: s.parentTaskId ?? null,
 
 
-      externalId: s.externalId ?? null,
-      state: s.state ?? null,
-      status: s.status ?? null,
-      priority: (s as DbTask).priority ?? null,
-      xp: s.xp,
-      estimatedSec: s.estimatedSec,
-      notes: s.notes ?? null,
-      dependencyExternalIds: s.dependencyExternalIds ?? [],
+        externalId: s.externalId ?? null,
+        state: s.state ?? null,
+        status: s.status ?? null,
+        priority: (s as DbTask).priority ?? null,
+        xp: s.xp,
+        estimatedSec: s.estimatedSec,
+        notes: s.notes ?? null,
+        dependencyExternalIds: s.dependencyExternalIds ?? [],
 
 
-      startAt: s.startAt ? new Date(s.startAt).toISOString() : null,
-      endAt: s.endAt ? new Date(s.endAt).toISOString() : null,
-      logHours: s.logHours,
-      createdAt: new Date(s.createdAt).toISOString(),
-      closedAt: s.closedAt ? new Date(s.closedAt).toISOString() : null,
+        startAt: s.startAt ? new Date(s.startAt).toISOString() : null,
+        endAt: s.endAt ? new Date(s.endAt).toISOString() : null,
+        logHours: s.logHours,
+        createdAt: new Date(s.createdAt).toISOString(),
+        closedAt: s.closedAt ? new Date(s.closedAt).toISOString() : null,
+        closureLogs: subLogs,
 
 
-      subtasks: [],
-    })),
+        subtasks: [],
+      };
+    }),
   };
 }
 

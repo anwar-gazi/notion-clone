@@ -6,7 +6,13 @@ import { toTaskDTO } from "@/lib/serialize";
 
 export async function GET(_req: Request, ctx: { params: { id: string } }) {
   const { id } = ctx.params;
-  const task = await prisma.task.findUnique({ where: { id }, include: { subtasks: true } });
+  const task = await prisma.task.findUnique({
+    where: { id },
+    include: {
+      closureLogs: { orderBy: { closedAt: "desc" } },
+      subtasks: { include: { closureLogs: { orderBy: { closedAt: "desc" } } } },
+    }
+  });
   if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(toTaskDTO(task));
 }
@@ -14,6 +20,17 @@ export async function GET(_req: Request, ctx: { params: { id: string } }) {
 
 export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
   const { id } = ctx.params;
-  await prisma.task.update({ where: { id }, data: { closedAt: new Date() } });
-  return NextResponse.json({ ok: true, closedAt: new Date().toISOString() });
+  const now = new Date();
+  const task = await prisma.task.update({
+    where: { id },
+    data: {
+      closedAt: now,
+      closureLogs: { create: { closedAt: now } },
+    },
+    include: {
+      closureLogs: { orderBy: { closedAt: "desc" } },
+      subtasks: { include: { closureLogs: { orderBy: { closedAt: "desc" } } } },
+    },
+  });
+  return NextResponse.json(toTaskDTO(task));
 }

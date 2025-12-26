@@ -10,6 +10,7 @@ export type BoardContextDTO = {
     payload: Partial<TaskDTO> & { columnId: string; boardId?: string; parentTaskId?: string | null }
   ) => Promise<TaskDTO>;
   deleteTask: (id: string) => Promise<void>;
+  reopenTask: (id: string, reason: string) => Promise<TaskDTO>;
   moveTask: (id: string, toColumnId: string) => void;
   // optional server syncs
   saveTask: (id: string, patch: Partial<TaskDTO>) => Promise<void>;
@@ -58,6 +59,7 @@ export type TaskDTO = {
   startAt: string | null; // ISO
   endAt: string | null;   // ISO
   logHours: number;
+  closureLogs: TaskClosureDTO[];
 
   // Timestamps
   createdAt: string; // ISO
@@ -73,3 +75,10 @@ export type Actions =
   | { type: "PATCH_TASK"; id: string; patch: Partial<TaskDTO> }
   | { type: "MOVE_TASK"; id: string; toColumnId: string }
   | { type: "HYDRATE"; data: BoardDTO };
+
+export type TaskClosureDTO = {
+  id: string;
+  closedAt: string;
+  reopenedAt: string | null;
+  reopenReason: string | null;
+};

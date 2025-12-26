@@ -44,7 +44,11 @@ export default async function Page() {
         include: {
           tasks: {
             orderBy: { position: "asc" },
-            include: { assignee: true, subtasks: true },
+            include: {
+              assignee: true,
+              closureLogs: { orderBy: { closedAt: "desc" } },
+              subtasks: { include: { closureLogs: { orderBy: { closedAt: "desc" } } } },
+            },
           },
         },
       },
