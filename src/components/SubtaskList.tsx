@@ -72,8 +72,10 @@ export default function SubtaskList({
             <input
               type="checkbox"
               checked={s.completed || Boolean(s.closedAt)}
+              disabled={Boolean(s.closedAt)}
               onChange={(e) => {
                 e.stopPropagation();
+                if (s.closedAt) return;
                 toggle(s.id, e.target.checked);
               }}
             />

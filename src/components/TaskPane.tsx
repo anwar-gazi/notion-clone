@@ -74,7 +74,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
 
   const runSave = useCallback(
     async (key: string, patch: Partial<TaskDTO>) => {
-      if (!paneTask || !board) return;
+      if (!paneTask || !board || paneTask.closedAt) return;
       setFieldStatus((prev) => ({ ...prev, [key]: { state: "saving" } }));
       try {
         await board.patchTask(paneTask.id, patch);
@@ -94,7 +94,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
 
   const commitIfChanged = useCallback(
     (key: keyof TaskDTO | string, next: any) => {
-      if (!paneTask) return;
+      if (!paneTask || paneTask.closedAt) return;
       const current = (paneTask as any)[key];
       const same =
         Array.isArray(current) || Array.isArray(next)
@@ -132,6 +132,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
   }
 
   if (!taskId || !paneTask) return null;
+  const isClosed = Boolean(paneTask.closedAt);
 
   // Editable metadata spec
   const meta = [
@@ -210,9 +211,10 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
           </div>
           <EditableTitle
             title={paneTask.title}
-            onSave={(title) => runSave("title", { title })}
-            status={fieldStatus["title"]}
-          />
+              onSave={(title) => runSave("title", { title })}
+              status={fieldStatus["title"]}
+              disabled={isClosed}
+            />
             <div className="text-xs text-gray-500 mt-1">
               Created: {dtLabel(paneTask.createdAt)}
               {paneTask.closedAt && <> • Closed: {dtLabel(paneTask.closedAt)}</>}
@@ -231,12 +233,13 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Description */}
           <section>
-            <Field label="Description" status={fieldStatus["description"]}>
+            <Field label="Description" status={fieldStatus["description"]} disabled={isClosed}>
               <textarea
                 className="w-full border rounded-xl p-3"
                 rows={6}
                 defaultValue={paneTask.description || ""}
                 onBlur={(e) => commitIfChanged("description", e.currentTarget.value)}
+                disabled={isClosed}
                 placeholder="Describe the task. Markdown supported."
               />
             </Field>
@@ -253,14 +256,15 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                   value={m.toView ? m.toView(paneTask[m.key as keyof TaskDTO]) : (paneTask[m.key as keyof TaskDTO] as any)}
                   type={(m as any).type}
                   options={(m as any).options}
-                  readOnly={(m as any).readOnly}
+                  readOnly={(m as any).readOnly || isClosed}
                   step={(m as any).step}
                   status={fieldStatus[m.key as string]}
                   onCommit={(val: any) => {
-                    if ((m as any).readOnly) return;
+                    if ((m as any).readOnly || isClosed) return;
                     const v = m.toSend ? m.toSend(val) : val;
                     commitIfChanged(m.key as string, v);
                   }}
+                  disabled={isClosed}
                 />
               ))}
             </div>
@@ -268,7 +272,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
 
           {/* Time tracking */}
           <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Start time" status={fieldStatus["startAt"]}>
+            <Field label="Start time" status={fieldStatus["startAt"]} disabled={isClosed}>
               <input
                 type="datetime-local"
                 className="border rounded-xl px-3 py-2 w-full"
@@ -281,7 +285,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                 }}
               />
             </Field>
-            <Field label="End time" status={fieldStatus["endAt"]}>
+            <Field label="End time" status={fieldStatus["endAt"]} disabled={isClosed}>
               <input
                 type="datetime-local"
                 className="border rounded-xl px-3 py-2 w-full"
@@ -294,7 +298,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                 }}
               />
             </Field>
-            <Field label="Logged hours" status={fieldStatus["logHours"]}>
+            <Field label="Logged hours" status={fieldStatus["logHours"]} disabled={isClosed}>
               <input
                 type="number"
                 step={0.25}
@@ -385,7 +389,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
 
 /* ————— presentational building blocks ————— */
 
-function EditableTitle({ title, onSave, status }: { title: string; onSave: (v: string) => void; status?: InlineStatus }) {
+function EditableTitle({ title, onSave, status, disabled }: { title: string; onSave: (v: string) => void; status?: InlineStatus; disabled?: boolean }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(title);
 
@@ -395,9 +399,11 @@ function EditableTitle({ title, onSave, status }: { title: string; onSave: (v: s
     return (
       <div className="flex items-center gap-2 flex-wrap">
         <h2 className="text-lg font-semibold truncate">{title}</h2>
-        <button className="text-xs underline" onClick={() => setEditing(true)}>
+        {!disabled && (
+          <button className="text-xs underline" onClick={() => setEditing(true)}>
           Edit
         </button>
+        )}
         <StatusInline status={status} />
       </div>
     );
@@ -424,13 +430,13 @@ function EditableTitle({ title, onSave, status }: { title: string; onSave: (v: s
   );
 }
 
-function Field({ label, children, status }: { label: string; children: React.ReactNode; status?: InlineStatus }) {
+function Field({ label, children, status, disabled }: { label: string; children: React.ReactNode; status?: InlineStatus; disabled?: boolean }) {
   return (
     <label className="text-xs block">
       <div className="mb-1 text-gray-600 flex items-center gap-2">
         <span>{label}</span>
       </div>
-      {children}
+      <div className={disabled ? "opacity-60 pointer-events-none" : ""}>{children}</div>
       <StatusInline status={status} />
     </label>
   );
@@ -445,6 +451,7 @@ function MetaField({
   step,
   status,
   onCommit,
+  disabled,
 }: {
   label: string;
   value: any;
@@ -454,9 +461,10 @@ function MetaField({
   step?: number;
   status?: InlineStatus;
   onCommit: (val: any) => void;
+  disabled?: boolean;
 }) {
   return (
-    <Field label={label} status={status}>
+    <Field label={label} status={status} disabled={disabled}>
       {readOnly ? (
         <div className="px-3 py-2 bg-gray-50 rounded-xl border">{value || "—"}</div>
       ) : type === "combo" ? (
@@ -505,7 +513,7 @@ function MetaField({
   );
 }
 
-function ComboField({ value, options, onCommit }: { value: string; options: string[]; onCommit: (v: string) => void }) {
+function ComboField({ value, options, onCommit, disabled }: { value: string; options: string[]; onCommit: (v: string) => void; disabled?: boolean }) {
   const [input, setInput] = useState(value || "");
   const [open, setOpen] = useState(false);
 
@@ -534,6 +542,7 @@ function ComboField({ value, options, onCommit }: { value: string; options: stri
     <div className="relative">
       <input
         className="border rounded-xl px-3 py-2 w-full pr-8"
+        disabled={disabled}
         value={input}
         onChange={(e) => {
           setInput(e.target.value);
@@ -552,12 +561,13 @@ function ComboField({ value, options, onCommit }: { value: string; options: stri
         type="button"
         className="absolute inset-y-0 right-1 px-2 text-gray-500 hover:text-gray-800"
         onMouseDown={(e) => e.preventDefault()}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => !disabled && setOpen((v) => !v)}
         aria-label="Toggle status options"
+        disabled={disabled}
       >
         ▾
       </button>
-      {open && (
+      {open && !disabled && (
         <div className="absolute mt-1 z-10 w-full rounded-lg border bg-white shadow">
           {filtered.length === 0 ? (
             <div className="px-3 py-2 text-sm text-gray-500">No options</div>
