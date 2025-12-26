@@ -36,7 +36,7 @@ export default function Board({ board }: { board: BoardDTO }) {
           <Column key={col.id} column={col} onOpenTask={setActiveTaskId} />
         ))}
       </div>
-      <TaskPane taskId={activeTaskId} onClose={() => setActiveTaskId(null)} />
+      <TaskPane taskId={activeTaskId} onClose={() => setActiveTaskId(null)} onOpenTask={setActiveTaskId} />
     </BoardProvider>
   );
 }

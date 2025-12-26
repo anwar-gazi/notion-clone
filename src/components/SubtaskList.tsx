@@ -6,10 +6,12 @@ export default function SubtaskList({
   taskId,
   initial,
   onChange,
+  onOpenTask,
 }: {
   taskId: string;
   initial: any[];
   onChange?: (items: any[]) => void;
+  onOpenTask?: (id: string) => void;
 }) {
   const [items, setItems] = useState(initial || []);
   const [title, setTitle] = useState("");
@@ -62,13 +64,35 @@ export default function SubtaskList({
     <div className="mt-2">
       <div className="space-y-2">
         {items.map((s) => (
-          <label key={s.id} className="flex items-center gap-2">
-            <input type="checkbox" checked={s.completed} onChange={(e) => toggle(s.id, e.target.checked)} />
+          <label
+            key={s.id}
+            className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50 cursor-pointer"
+            onClick={() => onOpenTask?.(s.id)}
+          >
+            <input
+              type="checkbox"
+              checked={s.completed}
+              onChange={(e) => {
+                e.stopPropagation();
+                toggle(s.id, e.target.checked);
+              }}
+            />
             <input
               className="flex-1 border rounded px-2 py-1"
               defaultValue={s.title}
+              onClick={(e) => e.stopPropagation()}
               onBlur={(e) => patch(s.id, { title: e.currentTarget.value })}
             />
+            <button
+              type="button"
+              className="text-xs text-gray-500 underline"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenTask?.(s.id);
+              }}
+            >
+              Open
+            </button>
           </label>
         ))}
       </div>

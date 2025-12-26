@@ -27,7 +27,7 @@ type InlineStatus = {
   retry?: () => void;
 };
 
-export default function TaskPane({ taskId, onClose }: { taskId: string | null; onClose: () => void }) {
+export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: string | null; onClose: () => void; onOpenTask: (id: string) => void }) {
   const board = useBoard();
   const taskFromBoard = taskId && board ? board.board.tasks[taskId] : null;
 
@@ -47,6 +47,17 @@ export default function TaskPane({ taskId, onClose }: { taskId: string | null; o
     setImportMsg("");
     setSubVersion((v) => v + 1);
   }, [taskId, taskFromBoard?.id]);
+  const breadcrumbs = useMemo(() => {
+    const items: TaskDTO[] = [];
+    let current: TaskDTO | null = paneTask;
+    const map = board?.board.tasks || {};
+    while (current) {
+      items.unshift(current);
+      if (!current.parentTaskId) break;
+      current = map[current.parentTaskId] || null;
+    }
+    return items;
+  }, [paneTask, board?.board.tasks]);
 
   const markSuccessTimeout = useCallback((key: string) => {
     setTimeout(() => {
@@ -157,13 +168,27 @@ export default function TaskPane({ taskId, onClose }: { taskId: string | null; o
         className="fixed right-0 top-0 h-full w-full md:w-1/2 bg-white z-50 shadow-2xl flex flex-col"
       >
         {/* Header */}
-        <div className="p-4 border-b flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <EditableTitle
-              title={paneTask.title}
-              onSave={(title) => runSave("title", { title })}
-              status={fieldStatus["title"]}
-            />
+      <div className="p-4 border-b flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-xs text-gray-500 flex items-center gap-1 flex-wrap mb-1">
+            {breadcrumbs.map((item, idx) => (
+              <span key={item.id} className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className={`underline ${idx === breadcrumbs.length - 1 ? "font-semibold text-gray-800" : ""}`}
+                  onClick={() => onOpenTask(item.id)}
+                >
+                  {item.title || "Untitled"}
+                </button>
+                {idx < breadcrumbs.length - 1 && <span className="text-gray-400">›</span>}
+              </span>
+            ))}
+          </div>
+          <EditableTitle
+            title={paneTask.title}
+            onSave={(title) => runSave("title", { title })}
+            status={fieldStatus["title"]}
+          />
             <div className="text-xs text-gray-500 mt-1">
               Created: {dtLabel(paneTask.createdAt)}
               {paneTask.closedAt && <> • Closed: {dtLabel(paneTask.closedAt)}</>}
@@ -260,6 +285,7 @@ export default function TaskPane({ taskId, onClose }: { taskId: string | null; o
                 taskId={paneTask.id}
                 initial={paneTask.subtasks || []}
                 onChange={(items) => setPaneTask((prev) => (prev ? ({ ...prev, subtasks: items } as TaskDTO) : prev))}
+                onOpenTask={onOpenTask}
               />
             </div>
           </section>
