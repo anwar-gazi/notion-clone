@@ -24,6 +24,7 @@ export async function POST(req: Request) {
                 board: { connect: { id: parent.boardId } },
                 column: { connect: { id: parent.columnId } },
                 parentLinks: { create: { parent: { connect: { id: parent.id } } } },
+                primaryParent: { connect: { id: parent.id } },
             },
             include: {
                 parentLinks: true,

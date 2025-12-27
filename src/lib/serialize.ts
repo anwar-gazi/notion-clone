@@ -81,6 +81,7 @@ export function toTaskDTO(
     description: t.description ?? "",
     columnId: t.columnId ?? "",
     parentTaskIds: parents,
+    primaryParentId: (t as any).primaryParentId ?? (parents[0] ?? null),
     completed: Boolean(t.closedAt),
 
 
@@ -114,6 +115,7 @@ export function toTaskDTO(
         description: s.description ?? null,
         columnId: s.columnId ?? null,
         parentTaskIds: (s as any).parentLinks ? (s as any).parentLinks.map((l: any) => l.parentId) : [],
+        primaryParentId: (s as any).primaryParentId ?? null,
         completed: Boolean((s as any).closedAt),
 
 

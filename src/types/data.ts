@@ -44,6 +44,7 @@ export type TaskDTO = {
 
   // Parent pointers (subtasks if non-empty, top-level if empty)
   parentTaskIds: string[];
+  primaryParentId: string | null;
 
   // Simple progress fields you already had around the app
   completed: boolean;

@@ -33,6 +33,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
         title: title.trim(),
         board: { connect: { id: parent.boardId } },
         column: { connect: { id: parent.columnId } },
+        primaryParent: { connect: { id: parent.id } },
       },
     });
     await prisma.taskParentLink.create({ data: { parentId: parent.id, childId: child.id } });

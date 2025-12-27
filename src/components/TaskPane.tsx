@@ -102,7 +102,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     while (current && !seen.has(current.id)) {
       items.unshift(current);
       seen.add(current.id);
-      const nextId = current.parentTaskIds?.[0];
+      const nextId = current.primaryParentId || current.parentTaskIds?.[0];
       if (!nextId) break;
       current = map[nextId] || null;
     }
@@ -116,6 +116,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     [paneTask?.closureLogs]
   );
   const parentTaskIds = paneTask?.parentTaskIds || [];
+  const primaryParentId = paneTask?.primaryParentId || null;
   const parentTasks = parentTaskIds
     .map((id) => board?.board.tasks[id])
     .filter(Boolean) as TaskDTO[];
@@ -203,8 +204,24 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
         return;
       }
       await runSave("parentTaskIds", { parentTaskIds: nextIds });
+      if (paneTask.primaryParentId && !nextIds.includes(paneTask.primaryParentId)) {
+        await runSave("primaryParentId", { primaryParentId: null });
+      }
       setParentOpen(false);
       setParentQuery("");
+    },
+    [paneTask, runSave]
+  );
+
+  const confirmAndSetPrimary = useCallback(
+    async (nextId: string | null) => {
+      if (!paneTask || paneTask.closedAt) return;
+      if (nextId && !paneTask.parentTaskIds.includes(nextId)) {
+        const ok = window.confirm("Set as primary and add to parents?");
+        if (!ok) return;
+        await runSave("parentTaskIds", { parentTaskIds: Array.from(new Set([...paneTask.parentTaskIds, nextId])) });
+      }
+      await runSave("primaryParentId", { primaryParentId: nextId });
     },
     [paneTask, runSave]
   );
@@ -380,7 +397,20 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                   <div className="flex flex-wrap gap-2 text-xs">
                     {parentTasks.length === 0 && <span className="text-gray-500">None</span>}
                     {parentTasks.map((pt) => (
-                      <span key={pt.id} className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-gray-100 border">
+                      <span
+                        key={pt.id}
+                        className={`inline-flex items-center gap-2 px-2 py-1 rounded-full border ${pt.id === primaryParentId ? "bg-yellow-50 border-yellow-300" : "bg-gray-100"}`}
+                      >
+                        {!isClosed && (
+                          <button
+                            type="button"
+                            className={`text-[11px] ${pt.id === primaryParentId ? "text-yellow-600" : "text-gray-400"} hover:text-yellow-700`}
+                            title={pt.id === primaryParentId ? "Primary parent" : "Set as primary"}
+                            onClick={() => confirmAndSetPrimary(pt.id)}
+                          >
+                            ★
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="text-gray-800 underline"
@@ -414,14 +444,25 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                       disabled={isClosed}
                     />
                     {parentTaskIds.length > 0 && !isClosed && (
-                      <button
-                        type="button"
-                        className="absolute inset-y-0 right-2 text-xs text-gray-500 hover:text-gray-800"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => confirmAndSetParents([])}
-                      >
-                        Clear all
-                      </button>
+                      <div className="absolute inset-y-0 right-2 flex items-center gap-2 pr-1">
+                        <button
+                          type="button"
+                          className="text-[11px] text-gray-500 hover:text-gray-800"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => confirmAndSetParents([])}
+                        >
+                          Clear all
+                        </button>
+                        <button
+                          type="button"
+                          className="text-[11px] text-gray-500 hover:text-yellow-700"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => confirmAndSetPrimary(null)}
+                          title="Clear primary"
+                        >
+                          ★
+                        </button>
+                      </div>
                     )}
                     {parentOpen && !isClosed && (
                       <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow max-h-60 overflow-y-auto">

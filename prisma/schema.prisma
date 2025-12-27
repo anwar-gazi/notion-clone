@@ -120,10 +120,13 @@ model Task {
   boardId    String
   columnId   String
   assigneeId String?
+  primaryParentId String?
 
   // Self-relation to model subtasks (many-to-many via join table)
   parentLinks TaskParentLink[] @relation("TaskParentLinks_child")
   childLinks  TaskParentLink[] @relation("TaskParentLinks_parent")
+  primaryParent Task? @relation("TaskPrimaryParent", fields: [primaryParentId], references: [id], onDelete: SetNull)
+  primaryChildren Task[] @relation("TaskPrimaryParent")
 
   board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)

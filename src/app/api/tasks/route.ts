@@ -38,6 +38,8 @@ export async function POST(req: Request) {
     if (!body?.columnId) return NextResponse.json({ error: "columnId required" }, { status: 400 });
     if (!body?.boardId) return NextResponse.json({ error: "boardId required" }, { status: 400 });
     const parentIds: string[] = Array.from(new Set(Array.isArray(body.parentTaskIds) ? body.parentTaskIds.filter(Boolean) : []));
+    const primaryParentId: string | null = body.primaryParentId ? String(body.primaryParentId) : null;
+    if (primaryParentId && !parentIds.includes(primaryParentId)) parentIds.push(primaryParentId);
 
     const task = await prisma.task.create({
       data: {
@@ -52,6 +54,7 @@ export async function POST(req: Request) {
               },
             }
           : {}),
+        ...(primaryParentId ? { primaryParent: { connect: { id: primaryParentId } } } : {}),
 
         externalId: body.externalId ?? null,
         state: body.state ?? "",
@@ -116,6 +119,7 @@ export async function PATCH(req: Request) {
     const parentIds: string[] | undefined = Array.isArray(body.parentTaskIds)
       ? Array.from(new Set(body.parentTaskIds.filter(Boolean)))
       : undefined;
+    const primaryParentId = "primaryParentId" in body ? (body.primaryParentId ? String(body.primaryParentId) : null) : undefined;
 
     if (parentIds) {
       const existing = await prisma.taskParentLink.findMany({ where: { childId: body.id } });
@@ -129,6 +133,16 @@ export async function PATCH(req: Request) {
           skipDuplicates: true,
         }),
       ]);
+    }
+    if (primaryParentId !== undefined) {
+      // ensure link exists
+      if (primaryParentId && !(parentIds || []).includes(primaryParentId)) {
+        await prisma.taskParentLink.create({
+          data: { parentId: primaryParentId, childId: body.id },
+          // skipDuplicates not available on single create
+        }).catch(() => {});
+      }
+      data.primaryParentId = primaryParentId;
     }
 
     const updated = await prisma.task.update({
