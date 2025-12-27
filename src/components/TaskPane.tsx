@@ -376,7 +376,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
           </section>
         </div>
 
-        {/* Footer: Import + Export + Delete */}
+        {/* Footer: Import + Export + Close/Reopen */}
         <div className="p-4 border-t flex flex-wrap items-center gap-3">
           <input
             ref={fileRef}
@@ -418,10 +418,10 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                     alert(e?.message || "Failed to delete task");
                   }
                 }}
-                aria-label="Delete task"
-                title="Soft delete (mark closed)"
+                aria-label="Close task"
+                title="Close task"
               >
-                🗑 Delete
+                ✕ Close task
               </button>
             ) : (
               <button
