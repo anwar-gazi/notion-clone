@@ -183,7 +183,11 @@ export default function SubtaskList({
             />
             <span
               className={`px-2 py-1 rounded relative overflow-hidden ${
-                s.closedAt ? "line-through text-gray-400" : "text-gray-900 underline decoration-transparent hover:decoration-current"
+                s.closedAt
+                  ? "line-through text-gray-400"
+                  : s.startAt && !s.endAt
+                  ? "text-green-700 underline decoration-transparent hover:decoration-current"
+                  : "text-gray-900 underline decoration-transparent hover:decoration-current"
               } cursor-pointer`}
               title={`view this subtask (${s.id}: ${s.title || "Untitled"})`}
               onClick={(e) => { e.stopPropagation(); onOpenTask?.(s.id); }}
