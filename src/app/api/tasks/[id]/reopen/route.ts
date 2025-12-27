@@ -14,13 +14,16 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     const task = await prisma.task.findUnique({ where: { id } });
     if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+    // Some IDEs may not pick up generated delegates; cast for safety
+    const closureLog = (prisma as any).taskClosureLog;
+
     // Update latest closure log
-    const log = await prisma.taskClosureLog.findFirst({
+    const log = await closureLog.findFirst({
       where: { taskId: id, reopenedAt: null },
       orderBy: { closedAt: "desc" },
     });
     if (log) {
-      await prisma.taskClosureLog.update({
+      await closureLog.update({
         where: { id: log.id },
         data: { reopenedAt: new Date(), reopenReason: reason },
       });
