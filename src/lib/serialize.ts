@@ -1,6 +1,6 @@
 // src/lib/serialize.ts
 
-import type { Task as DbTask, Priority, TaskClosureLog } from "@prisma/client";
+import type { Task as DbTask, Priority, TaskClosureLog, TaskParentLink } from "@prisma/client";
 import { TaskDTO, BoardDTO, TaskClosureDTO } from "@/types/data";
 
 /**
@@ -57,7 +57,14 @@ export function toPlain<T>(data: T): T {
 
 
 // Map a DB task + included subtasks -> API DTO (one level of nesting is enough for current UI)
-export function toTaskDTO(t: (DbTask & { subtasks?: DbTask[]; closureLogs?: TaskClosureLog[] }) | null): TaskDTO | null {
+export function toTaskDTO(
+  t: (DbTask & {
+    childLinks?: (TaskParentLink & { child: DbTask & { closureLogs?: TaskClosureLog[] } })[];
+    parentLinks?: TaskParentLink[];
+    subtasks?: DbTask[];
+    closureLogs?: TaskClosureLog[];
+  }) | null
+): TaskDTO | null {
   if (!t) return null;
   const logs: TaskClosureDTO[] = (t.closureLogs || []).map((l) => ({
     id: l.id,
@@ -65,12 +72,16 @@ export function toTaskDTO(t: (DbTask & { subtasks?: DbTask[]; closureLogs?: Task
     reopenedAt: l.reopenedAt ? new Date(l.reopenedAt).toISOString() : null,
     reopenReason: l.reopenReason ?? null,
   }));
+  const parents = (t.parentLinks || []).map((l) => l.parentId);
+  const childTasks: (DbTask & { closureLogs?: TaskClosureLog[] })[] = (t.childLinks || []).map((l) => l.child);
+  const subtasks = childTasks.length ? childTasks : (t.subtasks as any as (DbTask & { closureLogs?: TaskClosureLog[] })[]) || [];
   return {
     id: t.id,
     title: t.title,
     description: t.description ?? "",
     columnId: t.columnId ?? "",
-    parentTaskId: t.parentTaskId ?? null,
+    parentTaskIds: parents,
+    completed: Boolean(t.closedAt),
 
 
     externalId: t.externalId ?? null,
@@ -90,7 +101,7 @@ export function toTaskDTO(t: (DbTask & { subtasks?: DbTask[]; closureLogs?: Task
     closureLogs: logs,
 
 
-    subtasks: (t.subtasks || []).map((s) => {
+    subtasks: (subtasks || []).map((s) => {
       const subLogs: TaskClosureDTO[] = ((s as any).closureLogs || []).map((l: any) => ({
         id: l.id,
         closedAt: new Date(l.closedAt).toISOString(),
@@ -102,7 +113,8 @@ export function toTaskDTO(t: (DbTask & { subtasks?: DbTask[]; closureLogs?: Task
         title: s.title,
         description: s.description ?? null,
         columnId: s.columnId ?? null,
-        parentTaskId: s.parentTaskId ?? null,
+        parentTaskIds: (s as any).parentLinks ? (s as any).parentLinks.map((l: any) => l.parentId) : [],
+        completed: Boolean((s as any).closedAt),
 
 
         externalId: s.externalId ?? null,

@@ -96,7 +96,7 @@ const BoardContxt = createContext<BoardContextDTO | null>(null);
 export function BoardProvider({ initial, children }: { initial: BoardDTO, children: React.ReactNode }): JSX.Element {
     const [board, dispatch] = useReducer(reducer, initial);
 
-  const createTask = useCallback(async (payload: Partial<TaskDTO> & { columnId: Id; boardId?: string; parentTaskId?: string | null }) => {
+  const createTask = useCallback(async (payload: Partial<TaskDTO> & { columnId: Id; boardId?: string; parentTaskIds?: string[] }) => {
         const res = await fetch("/api/tasks", {
             method: "POST",
             headers: { "Content-Type": "application/json" },

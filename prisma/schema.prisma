@@ -121,10 +121,9 @@ model Task {
   columnId   String
   assigneeId String?
 
-  // Self-relation to model subtasks
-  parentTaskId String?
-  parent Task? @relation("TaskParent", fields: [parentTaskId], references: [id], onDelete: Cascade)
-  subtasks Task[] @relation("TaskParent")
+  // Self-relation to model subtasks (many-to-many via join table)
+  parentLinks TaskParentLink[] @relation("TaskParentLinks_child")
+  childLinks  TaskParentLink[] @relation("TaskParentLinks_parent")
 
   board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
@@ -138,7 +137,6 @@ model Task {
   endAt     DateTime?
   logHours  Decimal   @default(0) @db.Decimal(6, 2)
 
-  @@index([parentTaskId])
   @@index([columnId])
 }
 
@@ -152,4 +150,15 @@ model TaskClosureLog {
   createdAt     DateTime @default(now())
 
   @@index([taskId])
+}
+
+model TaskParentLink {
+  parentId String
+  childId  String
+  parent   Task   @relation("TaskParentLinks_parent", fields: [parentId], references: [id], onDelete: Cascade)
+  child    Task   @relation("TaskParentLinks_child", fields: [childId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([parentId, childId])
+  @@index([childId])
 }

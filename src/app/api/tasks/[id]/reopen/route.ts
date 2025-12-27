@@ -34,7 +34,10 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       data: { closedAt: null },
       include: {
         closureLogs: { orderBy: { closedAt: "desc" } },
-        subtasks: { include: { closureLogs: { orderBy: { closedAt: "desc" } } } },
+        parentLinks: true,
+        childLinks: {
+          include: { child: { include: { closureLogs: { orderBy: { closedAt: "desc" } }, parentLinks: true } } },
+        },
       },
     });
 

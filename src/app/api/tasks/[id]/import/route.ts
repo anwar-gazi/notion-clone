@@ -8,6 +8,8 @@ export const runtime = "nodejs"; // ensure node runtime for FormData / file pars
 
 export async function POST(req: Request, ctx: { params: { id: string } }) {
   const { id } = ctx.params;
+  const parent = await prisma.task.findUnique({ where: { id }, select: { id: true, boardId: true, columnId: true } });
+  if (!parent) return NextResponse.json({ error: "Parent task not found" }, { status: 404 });
   const form = await req.formData();
   const file = form.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "file required" }, { status: 400 });
@@ -26,7 +28,14 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   let created = 0;
   for (const title of titles) {
     if (typeof title !== "string" || !title.trim()) continue;
-    await prisma.task.create({ data: { title: title.trim(), parentTaskId: id } });
+    const child = await prisma.task.create({
+      data: {
+        title: title.trim(),
+        board: { connect: { id: parent.boardId } },
+        column: { connect: { id: parent.columnId } },
+      },
+    });
+    await prisma.taskParentLink.create({ data: { parentId: parent.id, childId: child.id } });
     created++;
   }
 

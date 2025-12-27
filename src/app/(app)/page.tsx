@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Board from "@/components/Board";
 import { auth } from "@/../auth";
-import { toPlain } from "@/lib/serialize";
+import { toPlain, toTaskDTO } from "@/lib/serialize";
 import { BoardDTO, ColumnDTO, TaskDTO } from "@/types/data";
 import { BoardProvider } from "@/components/BoardContext";
 export { metadata } from "./layout";
@@ -48,7 +48,17 @@ export default async function Page() {
             include: {
               assignee: true,
               closureLogs: { orderBy: { closedAt: "desc" } },
-              subtasks: { include: { closureLogs: { orderBy: { closedAt: "desc" } } } },
+              parentLinks: true,
+              childLinks: {
+                include: {
+                  child: {
+                    include: {
+                      closureLogs: { orderBy: { closedAt: "desc" } },
+                      parentLinks: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -69,7 +79,8 @@ export default async function Page() {
     };
 
     for (const t of column.tasks) {
-      tasks[t.id] = t;
+      const dto = toTaskDTO(t as any)!;
+      tasks[dto.id] = dto;
     }
   }
 

@@ -10,7 +10,10 @@ export async function GET(_req: Request, ctx: { params: { id: string } }) {
     where: { id },
     include: {
       closureLogs: { orderBy: { closedAt: "desc" } },
-      subtasks: { include: { closureLogs: { orderBy: { closedAt: "desc" } } } },
+      parentLinks: true,
+      childLinks: {
+        include: { child: { include: { closureLogs: { orderBy: { closedAt: "desc" } }, parentLinks: true } } },
+      },
     }
   });
   if (!task) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -29,7 +32,10 @@ export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
     },
     include: {
       closureLogs: { orderBy: { closedAt: "desc" } },
-      subtasks: { include: { closureLogs: { orderBy: { closedAt: "desc" } } } },
+      parentLinks: true,
+      childLinks: {
+        include: { child: { include: { closureLogs: { orderBy: { closedAt: "desc" } }, parentLinks: true } } },
+      },
     },
   });
   return NextResponse.json(toTaskDTO(task));

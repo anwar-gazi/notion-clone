@@ -16,7 +16,16 @@ export async function GET(_req: Request, { params }: { params: { boardId: string
     include: {
       columns: {
         orderBy: { position: "asc" },
-        include: { tasks: { orderBy: { position: "asc" }, include: { assignee: true, subtasks: { orderBy: { position: "asc" } } } } },
+        include: {
+          tasks: {
+            orderBy: { position: "asc" },
+            include: {
+              assignee: true,
+              parentLinks: true,
+              childLinks: { include: { child: { include: { parentLinks: true } } } },
+            },
+          },
+        },
       },
       members: { include: { user: true } },
     },

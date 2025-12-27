@@ -7,7 +7,7 @@ export type BoardContextDTO = {
   // actions
   patchTask: (id: string, patch: Partial<TaskDTO>) => Promise<void>;
   createTask: (
-    payload: Partial<TaskDTO> & { columnId: string; boardId?: string; parentTaskId?: string | null }
+    payload: Partial<TaskDTO> & { columnId: string; boardId?: string; parentTaskIds?: string[] }
   ) => Promise<TaskDTO>;
   deleteTask: (id: string) => Promise<void>;
   reopenTask: (id: string, reason: string) => Promise<TaskDTO>;
@@ -33,7 +33,7 @@ export type ColumnDTO = {
   //tasks: TaskDTO[];
 };
 
-// Unified Task type. A "subtask" is any task with parentTaskId != null.
+// Unified Task type. A "subtask" is any task with one or more parents.
 export type TaskDTO = {
   id: string;
   title: string;
@@ -42,8 +42,8 @@ export type TaskDTO = {
   // Kanban placement
   columnId?: string | null;
 
-  // Parent pointer (subtasks if set, top-level if null)
-  parentTaskId: string | null;
+  // Parent pointers (subtasks if non-empty, top-level if empty)
+  parentTaskIds: string[];
 
   // Simple progress fields you already had around the app
   completed: boolean;

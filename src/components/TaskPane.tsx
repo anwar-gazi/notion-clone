@@ -57,7 +57,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     setSubVersion((v) => v + 1);
     setShowReopenModal(false);
     setReopenReason("");
-    setParentQuery(taskFromBoard?.parentTaskId ? (board?.board.tasks[taskFromBoard.parentTaskId]?.title || "") : "");
+    setParentQuery("");
     setParentOpen(false);
     setDepsQuery("");
     setDepsOpen(false);
@@ -98,10 +98,13 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     const items: TaskDTO[] = [];
     let current: TaskDTO | null = paneTask;
     const map = board?.board.tasks || {};
-    while (current) {
+    const seen = new Set<string>();
+    while (current && !seen.has(current.id)) {
       items.unshift(current);
-      if (!current.parentTaskId) break;
-      current = map[current.parentTaskId] || null;
+      seen.add(current.id);
+      const nextId = current.parentTaskIds?.[0];
+      if (!nextId) break;
+      current = map[nextId] || null;
     }
     return items;
   }, [paneTask, board?.board.tasks]);
@@ -112,7 +115,10 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
       }),
     [paneTask?.closureLogs]
   );
-  const parentTask = paneTask?.parentTaskId ? board?.board.tasks[paneTask.parentTaskId] : null;
+  const parentTaskIds = paneTask?.parentTaskIds || [];
+  const parentTasks = parentTaskIds
+    .map((id) => board?.board.tasks[id])
+    .filter(Boolean) as TaskDTO[];
   const searchTasks = useCallback(
     (term: string) => {
       const needle = term.toLowerCase().trim();
@@ -183,19 +189,24 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     [paneTask, runSave]
   );
 
-  const confirmAndSetParent = useCallback(
-    async (nextParentId: string | null) => {
+  const confirmAndSetParents = useCallback(
+    async (nextIds: string[]) => {
       if (!paneTask || paneTask.closedAt) return;
-      if (nextParentId === paneTask.parentTaskId) return;
-      const nextTask = nextParentId ? board?.board.tasks[nextParentId] : null;
-      const label = nextTask ? `${nextTask.title || nextTask.id}` : "no parent";
-      const ok = window.confirm(`Change parent to ${label}?`);
-      if (!ok) return;
-      await runSave("parentTaskId", { parentTaskId: nextParentId });
-      setParentQuery(nextTask ? nextTask.title || "" : "");
+      const current = paneTask.parentTaskIds || [];
+      const same =
+        current.length === nextIds.length &&
+        current.every((id) => nextIds.includes(id));
+      if (same) return;
+      const ok = window.confirm(`Update parents to ${nextIds.length ? nextIds.join(", ") : "(none)"}?`);
+      if (!ok) {
+        setParentOpen(false);
+        return;
+      }
+      await runSave("parentTaskIds", { parentTaskIds: nextIds });
       setParentOpen(false);
+      setParentQuery("");
     },
-    [board?.board.tasks, paneTask, runSave]
+    [paneTask, runSave]
   );
 
   const confirmAndSetDeps = useCallback(
@@ -364,49 +375,76 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
           <section>
             <h4 className="text-sm font-semibold mb-2">Details</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field label="Parent task" status={fieldStatus["parentTaskId"]} disabled={isClosed}>
-                <div className="relative">
-                  <input
-                    className="border rounded-xl px-3 py-2 w-full pr-16"
-                    value={parentQuery || parentTask?.title || parentTask?.id || ""}
-                    placeholder="Search tasks by title or ID"
-                    onChange={(e) => {
-                      setParentQuery(e.target.value);
-                      setParentOpen(true);
-                    }}
-                    onFocus={() => setParentOpen(true)}
-                    onBlur={() => setTimeout(() => setParentOpen(false), 150)}
-                    disabled={isClosed}
-                  />
-                  {parentTask && !isClosed && (
-                    <button
-                      type="button"
-                      className="absolute inset-y-0 right-2 text-xs text-gray-500 hover:text-gray-800"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => confirmAndSetParent(null)}
-                    >
-                      Clear
-                    </button>
-                  )}
-                  {parentOpen && !isClosed && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow max-h-60 overflow-y-auto">
-                      {parentOptions.length === 0 && (
-                        <div className="px-3 py-2 text-xs text-gray-500">No matches</div>
-                      )}
-                      {parentOptions.map((t) => (
+              <Field label="Parent tasks" status={fieldStatus["parentTaskIds"]} disabled={isClosed}>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    {parentTasks.length === 0 && <span className="text-gray-500">None</span>}
+                    {parentTasks.map((pt) => (
+                      <span key={pt.id} className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-gray-100 border">
                         <button
-                          key={t.id}
                           type="button"
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => confirmAndSetParent(t.id)}
+                          className="text-gray-800 underline"
+                          onClick={() => onOpenTask(pt.id)}
                         >
-                          <div className="font-medium text-gray-800">{t.title || "Untitled"}</div>
-                          <div className="text-[11px] text-gray-500">{t.id}</div>
+                          {pt.title || pt.id}
                         </button>
-                      ))}
-                    </div>
-                  )}
+                        {!isClosed && (
+                          <button
+                            type="button"
+                            className="text-[11px] text-gray-500 hover:text-red-600"
+                            onClick={() => confirmAndSetParents(parentTaskIds.filter((id) => id !== pt.id))}
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="relative">
+                    <input
+                      className="border rounded-xl px-3 py-2 w-full pr-16"
+                      value={parentQuery}
+                      placeholder="Search tasks by title or ID"
+                      onChange={(e) => {
+                        setParentQuery(e.target.value);
+                        setParentOpen(true);
+                      }}
+                      onFocus={() => setParentOpen(true)}
+                      onBlur={() => setTimeout(() => setParentOpen(false), 150)}
+                      disabled={isClosed}
+                    />
+                    {parentTaskIds.length > 0 && !isClosed && (
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-2 text-xs text-gray-500 hover:text-gray-800"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => confirmAndSetParents([])}
+                      >
+                        Clear all
+                      </button>
+                    )}
+                    {parentOpen && !isClosed && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow max-h-60 overflow-y-auto">
+                        {parentOptions.filter((t) => !parentTaskIds.includes(t.id)).length === 0 && (
+                          <div className="px-3 py-2 text-xs text-gray-500">No matches</div>
+                        )}
+                        {parentOptions
+                          .filter((t) => !parentTaskIds.includes(t.id))
+                          .map((t) => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => confirmAndSetParents(Array.from(new Set([...parentTaskIds, t.id])))}
+                            >
+                              <div className="font-medium text-gray-800">{t.title || "Untitled"}</div>
+                              <div className="text-[11px] text-gray-500">{t.id}</div>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </Field>
               {meta.map((m) => (

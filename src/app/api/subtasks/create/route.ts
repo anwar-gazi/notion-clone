@@ -21,10 +21,14 @@ export async function POST(req: Request) {
         const sub = await prisma.task.create({
             data: {
                 title: body.title,
-                parent: { connect: { id: parent.id } },
                 board: { connect: { id: parent.boardId } },
                 column: { connect: { id: parent.columnId } },
-            }
+                parentLinks: { create: { parent: { connect: { id: parent.id } } } },
+            },
+            include: {
+                parentLinks: true,
+                closureLogs: { orderBy: { closedAt: "desc" } },
+            },
         });
 
         return NextResponse.json(toTaskDTO(sub));

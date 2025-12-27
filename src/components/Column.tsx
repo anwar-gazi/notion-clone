@@ -11,7 +11,7 @@ import { useBoard, useTasksInColumn } from "./BoardContext";
  * @returns 
  */
 export default function Column({ column, onOpenTask }: { column: ColumnDTO; onOpenTask: (id: string) => void }) {
-  const tasks = useTasksInColumn(column.id).filter(t => !t.parentTaskId);
+  const tasks = useTasksInColumn(column.id).filter(t => !(t.parentTaskIds && t.parentTaskIds.length));
   const boardCtx = useBoard();
   const [showModal, setShowModal] = useState(false);
   const [animateModal, setAnimateModal] = useState(false);
@@ -100,7 +100,7 @@ export default function Column({ column, onOpenTask }: { column: ColumnDTO; onOp
         externalId: form.externalId || undefined,
         columnId: column.id,
         boardId: boardCtx.board.id,
-        parentTaskId: null,
+        parentTaskIds: [],
       };
       await boardCtx.createTask(payload as any);
       resetForm();

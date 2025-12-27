@@ -6,7 +6,12 @@ import { toTaskDTO } from "@/lib/serialize";
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const parent = url.searchParams.get("parent"); // "null" for top-level
-  const where = parent === "null" ? { parentTaskId: null } : {};
+  const where =
+    parent === "null"
+      ? { parentLinks: { none: {} } }
+      : parent
+      ? { parentLinks: { some: { parentId: parent } } }
+      : {};
 
 
   const tasks = await prisma.task.findMany({
@@ -14,7 +19,10 @@ export async function GET(req: Request) {
     orderBy: [{ createdAt: "asc" }],
     include: {
       closureLogs: { orderBy: { closedAt: "desc" } },
-      subtasks: { include: { closureLogs: { orderBy: { closedAt: "desc" } } } },
+      parentLinks: true,
+      childLinks: {
+        include: { child: { include: { closureLogs: { orderBy: { closedAt: "desc" } }, parentLinks: true } } },
+      },
     },
   });
 
@@ -22,13 +30,14 @@ export async function GET(req: Request) {
   return NextResponse.json(tasks.map((t) => toTaskDTO(t)));
 }
 
-// Create top-level task or subtask (if parentTaskId provided)
+// Create top-level task or subtask (if parentTaskIds provided)
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     if (!body?.title) return NextResponse.json({ error: "title required" }, { status: 400 });
     if (!body?.columnId) return NextResponse.json({ error: "columnId required" }, { status: 400 });
     if (!body?.boardId) return NextResponse.json({ error: "boardId required" }, { status: 400 });
+    const parentIds: string[] = Array.from(new Set(Array.isArray(body.parentTaskIds) ? body.parentTaskIds.filter(Boolean) : []));
 
     const task = await prisma.task.create({
       data: {
@@ -36,8 +45,12 @@ export async function POST(req: Request) {
         description: body.description ?? null,
         column: { connect: { id: String(body.columnId) } },
         board: { connect: { id: String(body.boardId) } },
-        ...(body.parentTaskId
-          ? { parent: { connect: { id: String(body.parentTaskId) } } }
+        ...(parentIds.length
+          ? {
+              parentLinks: {
+                create: parentIds.map((pid) => ({ parent: { connect: { id: String(pid) } } })),
+              },
+            }
           : {}),
 
         externalId: body.externalId ?? null,
@@ -56,7 +69,10 @@ export async function POST(req: Request) {
       },
       include: {
         closureLogs: { orderBy: { closedAt: "desc" } },
-        subtasks: { include: { closureLogs: { orderBy: { closedAt: "desc" } } } },
+        parentLinks: true,
+        childLinks: {
+          include: { child: { include: { closureLogs: { orderBy: { closedAt: "desc" } }, parentLinks: true } } },
+        },
       },
     });
     return NextResponse.json(toTaskDTO(task));
@@ -79,7 +95,6 @@ export async function PATCH(req: Request) {
       "title",
       "description",
       "columnId",
-      "parentTaskId",
       "externalId",
       "state",
       "status",
@@ -98,12 +113,33 @@ export async function PATCH(req: Request) {
     if (body.completed) data.closedAt = new Date();
 
 
+    const parentIds: string[] | undefined = Array.isArray(body.parentTaskIds)
+      ? Array.from(new Set(body.parentTaskIds.filter(Boolean)))
+      : undefined;
+
+    if (parentIds) {
+      const existing = await prisma.taskParentLink.findMany({ where: { childId: body.id } });
+      const existingIds = existing.map((l) => l.parentId);
+      const toAdd = parentIds.filter((pid) => !existingIds.includes(pid));
+      const toRemove = existingIds.filter((pid) => !parentIds.includes(pid));
+      await prisma.$transaction([
+        prisma.taskParentLink.deleteMany({ where: { childId: body.id, parentId: { in: toRemove } } }),
+        prisma.taskParentLink.createMany({
+          data: toAdd.map((pid) => ({ parentId: pid, childId: body.id })),
+          skipDuplicates: true,
+        }),
+      ]);
+    }
+
     const updated = await prisma.task.update({
       where: { id: body.id },
       data,
       include: {
         closureLogs: { orderBy: { closedAt: "desc" } },
-        subtasks: { include: { closureLogs: { orderBy: { closedAt: "desc" } } } },
+        parentLinks: true,
+        childLinks: {
+          include: { child: { include: { closureLogs: { orderBy: { closedAt: "desc" } }, parentLinks: true } } },
+        },
       }
     });
     return NextResponse.json(toTaskDTO(updated));

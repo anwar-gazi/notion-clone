@@ -23,16 +23,26 @@ async function main() {
     include: { columns: true },
   });
   const todo = board.columns.find(c => c.name === "To Do")!;
-  await prisma.task.create({
+  const parent = await prisma.task.create({
     data: {
       title: "Try the Kanban",
       description: "Drag me around ➜ add subtasks ➜ mark done",
       boardId: board.id,
       columnId: todo.id,
       assigneeId: user.id,
-      subtasks: { create: [{ title: "Create a task" }, { title: "Add a subtask" }, { title: "Mark subtask complete" }] },
     },
   });
+  const seeds = ["Create a task", "Add a subtask", "Mark subtask complete"];
+  for (const title of seeds) {
+    await prisma.task.create({
+      data: {
+        title,
+        boardId: board.id,
+        columnId: todo.id,
+        parentLinks: { create: { parent: { connect: { id: parent.id } } } },
+      },
+    });
+  }
   console.log("Seeded ✔");
 }
 main().finally(() => prisma.$disconnect());

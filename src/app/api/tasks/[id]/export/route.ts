@@ -9,7 +9,15 @@ function toCSV(rows: any[]): string {
   return [headers.join(","), ...rows.map(r => headers.map(h => escape(r[h])).join(","))].join("\n");
 }
 export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const task = await prisma.task.findUnique({ where: { id: params.id }, include: { subtasks: true, assignee: true, column: true, board: true } });
+  const task = await prisma.task.findUnique({
+    where: { id: params.id },
+    include: {
+      assignee: true,
+      column: true,
+      board: true,
+      childLinks: { include: { child: true } },
+    },
+  });
   if (!task) return NextResponse.json({ error: "not found" }, { status: 404 });
   const query = new URL(req.url).searchParams;
   const format = (query.get("format") || "csv").toLowerCase();
@@ -18,8 +26,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     assignee: task.assignee?.email ?? "", createdAt: task.createdAt.toISOString(), closedAt: task.closedAt?.toISOString() ?? "",
     startAt: task.startAt?.toISOString() ?? "", endAt: task.endAt?.toISOString() ?? "", logHours: task.logHours.toString(),
   };
-  const subRows = task.subtasks.map(s => ({
-    id: s.id, taskId: task.id, title: s.title, completed: s.completed,
+  const subTasks = (task as any).childLinks?.map((l: any) => l.child) ?? [];
+  const subRows = subTasks.map((s: any) => ({
+    id: s.id, taskId: task.id, title: s.title, completed: Boolean(s.closedAt),
     createdAt: s.createdAt.toISOString(), closedAt: s.closedAt?.toISOString() ?? "",
     startAt: s.startAt?.toISOString() ?? "", endAt: s.endAt?.toISOString() ?? "", logHours: s.logHours.toString(),
   }));
