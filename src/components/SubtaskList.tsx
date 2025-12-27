@@ -74,7 +74,7 @@ export default function SubtaskList({
               checked={s.completed || Boolean(s.closedAt)}
               disabled={Boolean(s.closedAt)}
               title={s.completed || s.closedAt ? "" : "mark as closed"}
-              className={`h-4 w-4 rounded border-gray-400 ${!s.completed && !s.closedAt ? "transition transform hover:scale-110 hover:border-red-500 hover:ring-2 hover:ring-red-200 hover:cursor-pointer" : ""}`}
+              className={`h-4 w-4 rounded border-gray-400 ${!s.completed && !s.closedAt ? "transition transform hover:scale-110 hover:border-red-500 hover:ring-2 hover:ring-red-200 hover:cursor-[url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/></svg>\")_12_12,auto]" : ""}`}
               onChange={(e) => {
                 e.stopPropagation();
                 if (s.closedAt) return;
