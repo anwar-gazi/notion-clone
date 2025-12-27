@@ -42,6 +42,8 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
   const fileRef = useRef<HTMLInputElement>(null);
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [reopenReason, setReopenReason] = useState("");
+  const [parentQuery, setParentQuery] = useState("");
+  const [parentOpen, setParentOpen] = useState(false);
 
   useEffect(() => {
     setPaneTask(taskFromBoard || null);
@@ -50,6 +52,8 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     setSubVersion((v) => v + 1);
     setShowReopenModal(false);
     setReopenReason("");
+    setParentQuery(taskFromBoard?.parentTaskId ? (board?.board.tasks[taskFromBoard.parentTaskId]?.title || "") : "");
+    setParentOpen(false);
   }, [taskId, taskFromBoard]);
 
   // Always hydrate latest task (with closure logs) when pane opens
@@ -85,6 +89,15 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
       }),
     [paneTask?.closureLogs]
   );
+  const parentTask = paneTask?.parentTaskId ? board?.board.tasks[paneTask.parentTaskId] : null;
+  const parentOptions = useMemo(() => {
+    const term = (parentQuery || "").toLowerCase().trim();
+    const list = Object.values(board?.board.tasks || {}).filter((t) => t.id !== paneTask?.id);
+    if (!term) return list.slice(0, 8);
+    return list
+      .filter((t) => t.title.toLowerCase().includes(term) || t.id.toLowerCase().includes(term))
+      .slice(0, 8);
+  }, [board?.board.tasks, parentQuery, paneTask?.id]);
 
   const markSuccessTimeout = useCallback((key: string) => {
     setTimeout(() => {
@@ -131,6 +144,21 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
       runSave(key as string, { [key]: next } as any);
     },
     [paneTask, runSave]
+  );
+
+  const confirmAndSetParent = useCallback(
+    async (nextParentId: string | null) => {
+      if (!paneTask || paneTask.closedAt) return;
+      if (nextParentId === paneTask.parentTaskId) return;
+      const nextTask = nextParentId ? board?.board.tasks[nextParentId] : null;
+      const label = nextTask ? `${nextTask.title || nextTask.id}` : "no parent";
+      const ok = window.confirm(`Change parent to ${label}?`);
+      if (!ok) return;
+      await runSave("parentTaskId", { parentTaskId: nextParentId });
+      setParentQuery(nextTask ? nextTask.title || "" : "");
+      setParentOpen(false);
+    },
+    [board?.board.tasks, paneTask, runSave]
   );
 
   async function handleImport(file: File) {
@@ -287,6 +315,51 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
           <section>
             <h4 className="text-sm font-semibold mb-2">Details</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Parent task" status={fieldStatus["parentTaskId"]} disabled={isClosed}>
+                <div className="relative">
+                  <input
+                    className="border rounded-xl px-3 py-2 w-full pr-16"
+                    value={parentQuery || parentTask?.title || parentTask?.id || ""}
+                    placeholder="Search tasks by title or ID"
+                    onChange={(e) => {
+                      setParentQuery(e.target.value);
+                      setParentOpen(true);
+                    }}
+                    onFocus={() => setParentOpen(true)}
+                    onBlur={() => setTimeout(() => setParentOpen(false), 150)}
+                    disabled={isClosed}
+                  />
+                  {parentTask && !isClosed && (
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-2 text-xs text-gray-500 hover:text-gray-800"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => confirmAndSetParent(null)}
+                    >
+                      Clear
+                    </button>
+                  )}
+                  {parentOpen && !isClosed && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow max-h-60 overflow-y-auto">
+                      {parentOptions.length === 0 && (
+                        <div className="px-3 py-2 text-xs text-gray-500">No matches</div>
+                      )}
+                      {parentOptions.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => confirmAndSetParent(t.id)}
+                        >
+                          <div className="font-medium text-gray-800">{t.title || "Untitled"}</div>
+                          <div className="text-[11px] text-gray-500">{t.id}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Field>
               {meta.map((m) => (
                 <MetaField
                   key={m.key as string}
