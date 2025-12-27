@@ -27,16 +27,7 @@ export default function Board({ board }: { board: BoardDTO }) {
     }
   }, [pathname, board.tasks]);
 
-  // Persist open task (localStorage) and sync URL
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (activeTaskId) {
-      window.localStorage.setItem("openTaskId", activeTaskId);
-    } else {
-      window.localStorage.removeItem("openTaskId");
-    }
-  }, [activeTaskId]);
-
+  // Sync URL with active task
   useEffect(() => {
     if (!router || !pathname) return;
     if (activeTaskId) {
