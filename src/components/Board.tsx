@@ -7,16 +7,22 @@ import Column from "./Column";
 import { BoardDTO, ColumnDTO } from "@/types/data";
 import { BoardProvider } from "./BoardContext";
 import TaskPane from "./TaskPane";
+import { useRef } from "react";
 
 export default function Board({ board }: { board: BoardDTO }) {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const basePathRef = useRef<string>("");
 
   // Restore from URL on load (/task/:id)
   useEffect(() => {
     if (!pathname) return;
+    if (!basePathRef.current) {
+      const parts = pathname.split("/task");
+      basePathRef.current = parts[0] || "/";
+    }
     const parts = pathname.split("/").filter(Boolean);
     const taskIdx = parts.indexOf("task");
     if (taskIdx !== -1 && parts[taskIdx + 1]) {
@@ -30,11 +36,10 @@ export default function Board({ board }: { board: BoardDTO }) {
   // Sync URL with active task
   useEffect(() => {
     if (!router || !pathname) return;
-    if (activeTaskId) {
-      router.replace(`/task/${activeTaskId}`, { scroll: false });
-    } else {
-      router.replace(pathname.split("/task")[0] || "/", { scroll: false });
-    }
+    const base = basePathRef.current || "/";
+    const target = activeTaskId ? `${base.replace(/\/$/, "")}/task/${activeTaskId}` : base || "/";
+    if (pathname === target) return;
+    router.push(target, { scroll: false });
   }, [activeTaskId, pathname, router]);
 
   return (
