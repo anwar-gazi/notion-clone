@@ -73,6 +73,7 @@ export default function SubtaskList({
               type="checkbox"
               checked={s.completed || Boolean(s.closedAt)}
               disabled={Boolean(s.closedAt)}
+              title={s.completed || s.closedAt ? "" : "mark as closed"}
               onChange={(e) => {
                 e.stopPropagation();
                 if (s.closedAt) return;
