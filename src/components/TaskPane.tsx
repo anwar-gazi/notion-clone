@@ -642,7 +642,10 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
               <SubtaskList
                 key={subVersion} // re-mount after import
                 taskId={paneTask.id}
-                initial={paneTask.subtasks || []}
+                initial={(paneTask.subtasks || []).map((s) => ({
+                  ...s,
+                  primaryParentTitle: s.primaryParentId ? board?.board.tasks[s.primaryParentId]?.title : undefined,
+                }))}
                 onChange={(items) => setPaneTask((prev) => (prev ? ({ ...prev, subtasks: items } as TaskDTO) : prev))}
                 onOpenTask={onOpenTask}
               />
