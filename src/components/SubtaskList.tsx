@@ -74,7 +74,7 @@ export default function SubtaskList({
               checked={s.completed || Boolean(s.closedAt)}
               disabled={Boolean(s.closedAt)}
               title={s.completed || s.closedAt ? "" : "mark as closed"}
-              className={`h-4 w-4 rounded border-gray-400 ${!s.completed && !s.closedAt ? "transition transform hover:scale-110 hover:border-red-500 hover:ring-2 hover:ring-red-200" : ""}`}
+              className={`h-4 w-4 rounded border-gray-400 ${!s.completed && !s.closedAt ? "transition transform hover:scale-110 hover:border-red-500 hover:ring-2 hover:ring-red-200 hover:cursor-pointer" : ""}`}
               onChange={(e) => {
                 e.stopPropagation();
                 if (s.closedAt) return;
