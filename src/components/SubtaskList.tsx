@@ -191,6 +191,14 @@ export default function SubtaskList({
                 toggle(s.id, e.target.checked);
               }}
             />
+            {s.primaryParentId && s.primaryParentId !== taskId && (
+              <span
+                className="text-[12px] text-amber-600"
+                title={`Primary parent is ${s.primaryParentId}`}
+              >
+                ↔
+              </span>
+            )}
             <span
               className={`px-2 py-1 rounded relative overflow-hidden ${
                 s.closedAt
