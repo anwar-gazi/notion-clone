@@ -44,6 +44,8 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
   const [reopenReason, setReopenReason] = useState("");
   const [parentQuery, setParentQuery] = useState("");
   const [parentOpen, setParentOpen] = useState(false);
+  const [depsQuery, setDepsQuery] = useState("");
+  const [depsOpen, setDepsOpen] = useState(false);
 
   useEffect(() => {
     setPaneTask(taskFromBoard || null);
@@ -54,6 +56,8 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     setReopenReason("");
     setParentQuery(taskFromBoard?.parentTaskId ? (board?.board.tasks[taskFromBoard.parentTaskId]?.title || "") : "");
     setParentOpen(false);
+    setDepsQuery("");
+    setDepsOpen(false);
   }, [taskId, taskFromBoard]);
 
   // Always hydrate latest task (with closure logs) when pane opens
@@ -104,6 +108,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
 
   const parentOptions = useMemo(() => searchTasks(parentQuery), [parentQuery, searchTasks]);
   const dependencies = paneTask?.dependencyExternalIds || [];
+  const depOptions = useMemo(() => searchTasks(depsQuery), [depsQuery, searchTasks]);
 
   const markSuccessTimeout = useCallback((key: string) => {
     setTimeout(() => {
@@ -408,18 +413,18 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                   <div className="relative">
                     <input
                       className="border rounded-xl px-3 py-2 w-full pr-16"
-                      value={parentQuery}
-                      onChange={(e) => {
-                        setParentQuery(e.target.value);
-                        setParentOpen(true);
-                      }}
-                      onFocus={() => setParentOpen(true)}
-                      onBlur={() => setTimeout(() => setParentOpen(false), 150)}
-                      placeholder="Search tasks by title or ID"
-                      disabled={isClosed}
-                    />
-                    {dependencies.length > 0 && !isClosed && (
-                      <button
+                    value={depsQuery}
+                    onChange={(e) => {
+                      setDepsQuery(e.target.value);
+                      setDepsOpen(true);
+                    }}
+                    onFocus={() => setDepsOpen(true)}
+                    onBlur={() => setTimeout(() => setDepsOpen(false), 150)}
+                    placeholder="Search tasks by title or ID"
+                    disabled={isClosed}
+                  />
+                  {dependencies.length > 0 && !isClosed && (
+                    <button
                         type="button"
                         className="absolute inset-y-0 right-2 text-xs text-gray-500 hover:text-gray-800"
                         onMouseDown={(e) => e.preventDefault()}
@@ -428,12 +433,12 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                         Clear
                       </button>
                     )}
-                    {parentOpen && !isClosed && (
+                    {depsOpen && !isClosed && (
                       <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow max-h-60 overflow-y-auto">
-                        {parentOptions.length === 0 ? (
+                        {depOptions.length === 0 ? (
                           <div className="px-3 py-2 text-xs text-gray-500">No matches</div>
                         ) : (
-                          parentOptions.map((t) => (
+                          depOptions.map((t) => (
                             <button
                               key={t.id}
                               type="button"
