@@ -14,16 +14,18 @@ export default function Board({ board }: { board: BoardDTO }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Restore from URL on load
+  // Restore from URL on load (/task/:id)
   useEffect(() => {
-    if (!searchParams) return;
-    const sub = searchParams.get("subtask");
-    const task = searchParams.get("task");
-    const id = sub || task;
-    if (id && board.tasks[id]) {
-      setActiveTaskId(id);
+    if (!pathname) return;
+    const parts = pathname.split("/").filter(Boolean);
+    const taskIdx = parts.indexOf("task");
+    if (taskIdx !== -1 && parts[taskIdx + 1]) {
+      const id = parts[taskIdx + 1];
+      if (board.tasks[id]) {
+        setActiveTaskId(id);
+      }
     }
-  }, [searchParams, board.tasks]);
+  }, [pathname, board.tasks]);
 
   // Persist open task (localStorage) and sync URL
   useEffect(() => {
@@ -37,24 +39,12 @@ export default function Board({ board }: { board: BoardDTO }) {
 
   useEffect(() => {
     if (!router || !pathname) return;
-    const params = new URLSearchParams(searchParams?.toString() || "");
     if (activeTaskId) {
-      const t = board.tasks[activeTaskId];
-      if (t?.parentTaskId) {
-        params.set("task", t.parentTaskId);
-        params.set("subtask", activeTaskId);
-      } else {
-        params.set("task", activeTaskId);
-        params.delete("subtask");
-      }
+      router.replace(`/task/${activeTaskId}`, { scroll: false });
     } else {
-      params.delete("task");
-      params.delete("subtask");
+      router.replace(pathname.split("/task")[0] || "/", { scroll: false });
     }
-    const qs = params.toString();
-    const href = qs ? `${pathname}?${qs}` : pathname;
-    router.replace(href, { scroll: false });
-  }, [activeTaskId, board.tasks, pathname, router, searchParams]);
+  }, [activeTaskId, pathname, router]);
 
   return (
     <BoardProvider initial={board}>
