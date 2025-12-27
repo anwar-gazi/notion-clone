@@ -194,11 +194,6 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
       {/* BACKDROP */}
       <div
         ref={backdropRef}
-        onClick={(e) => {
-          if (e.target === backdropRef.current) {
-            onClose();
-          }
-        }}
         className="fixed inset-0 bg-black/40 z-40"
         aria-hidden="true"
       />
@@ -208,6 +203,12 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
         role="dialog"
         aria-modal="true"
         className="fixed right-0 top-0 h-full w-full md:w-1/2 bg-white z-50 shadow-2xl flex flex-col"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+          }
+        }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
       <div className="p-4 border-b flex items-start justify-between gap-3">
