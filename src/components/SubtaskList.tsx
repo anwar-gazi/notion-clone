@@ -193,6 +193,32 @@ export default function SubtaskList({
     }
   };
 
+  const removeParent = async (childId: string, parentId: string) => {
+    const item = items.find((i) => i.id === childId);
+    if (!item) return;
+    const remaining = (item.parentTaskIds || []).filter((id) => id !== parentId);
+    const ok = window.confirm("Remove this parent from the subtask?");
+    if (!ok) return;
+    setStatus(childId, "saving");
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: childId, parentTaskIds: remaining, primaryParentId: item.primaryParentId || null }),
+      });
+      const updated = await res.json();
+      if (!res.ok) throw new Error(updated?.error || "Update failed");
+      const next = items.map((i) => (i.id === childId ? updated : i));
+      setItems(next);
+      onChange?.(next);
+      setStatus(childId, "success", "Parent removed");
+    } catch (e: any) {
+      setStatus(childId, "error", e?.message || "Update failed");
+    } finally {
+      setParentPickerOpen((prev) => ({ ...prev, [childId]: false }));
+    }
+  };
+
   const searchOptions = (term: string, childId: string, existing: string[]) => {
     const list = Object.values(board?.board.tasks || {}).filter((t) => t.id !== childId);
     const needle = term.toLowerCase().trim();
@@ -361,6 +387,26 @@ export default function SubtaskList({
                           <div className="text-[11px] text-gray-500">{t.id}</div>
                         </button>
                       ))}
+                      {(s.parentTaskIds || []).filter((pid: string) => pid !== taskId).length > 0 && (
+                        <div className="border-t mt-2 pt-2">
+                          <div className="text-[11px] text-gray-600 px-2 pb-1">Current parents</div>
+                          {(s.parentTaskIds || [])
+                            .filter((pid: string) => pid !== taskId)
+                            .map((pid: string) => (
+                              <div key={pid} className="flex items-center justify-between px-2 py-1 text-sm">
+                                <span className="text-gray-800">{pid}</span>
+                                <button
+                                  type="button"
+                                  className="text-[11px] text-red-600 hover:text-red-800"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => removeParent(s.id, pid)}
+                                >
+                                  Unlink
+                                </button>
+                              </div>
+                            ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
