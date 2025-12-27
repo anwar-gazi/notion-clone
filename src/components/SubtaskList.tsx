@@ -45,6 +45,19 @@ export default function SubtaskList({
     setFieldValues(map);
   }, [items]);
 
+  const resetFieldValues = (id: string) => {
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+    setFieldValues((prev) => ({
+      ...prev,
+      [id]: {
+        startAt: toLocalInput(item.startAt),
+        endAt: toLocalInput(item.endAt),
+        logHours: item.logHours != null ? String(item.logHours) : "",
+      },
+    }));
+  };
+
   const setStatus = (id: string, state: "idle" | "saving" | "success" | "error", message?: string) => {
     setFieldStatus((prev) => ({ ...prev, [id]: { state, message } }));
     if (state === "success") {
@@ -67,7 +80,10 @@ export default function SubtaskList({
     if (!changed) return;
 
     const ok = window.confirm("Save time changes to this subtask?");
-    if (!ok) return;
+    if (!ok) {
+      resetFieldValues(id);
+      return;
+    }
 
     setStatus(id, "saving");
     try {
