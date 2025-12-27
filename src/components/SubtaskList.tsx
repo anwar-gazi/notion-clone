@@ -54,6 +54,7 @@ export default function SubtaskList({
   };
 
   async function saveFields(id: string) {
+    if (fieldStatus[id]?.state === "saving") return;
     const item = items.find((i) => i.id === id);
     if (!item) return;
     const pending = fieldValues[id] || { startAt: "", endAt: "", logHours: "" };
