@@ -198,25 +198,12 @@ export default function SubtaskList({
                       if (s.closedAt) return;
                       const next = { ...(fieldValues[s.id] || {}), startAt: e.target.value };
                       setFieldValues((prev) => ({ ...prev, [s.id]: next }));
-                      setSkipBlurSave((prev) => ({ ...prev, [s.id]: true }));
-                      saveFields(s.id, next);
                     }}
                     onBlur={() => {
-                      if (skipBlurSave[s.id]) {
-                        setSkipBlurSave((prev) => ({ ...prev, [s.id]: false }));
-                        return;
-                      }
                       saveFields(s.id);
                     }}
                     onClick={(e) => e.stopPropagation()}
                     readOnly={Boolean(s.closedAt)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        setSkipBlurSave((prev) => ({ ...prev, [s.id]: true }));
-                        saveFields(s.id);
-                      }
-                    }}
                   />
                 </label>
                 <label className="flex items-center gap-1">
@@ -230,25 +217,12 @@ export default function SubtaskList({
                       if (s.closedAt) return;
                       const next = { ...(fieldValues[s.id] || {}), endAt: e.target.value };
                       setFieldValues((prev) => ({ ...prev, [s.id]: next }));
-                      setSkipBlurSave((prev) => ({ ...prev, [s.id]: true }));
-                      saveFields(s.id, next);
                     }}
                     onBlur={() => {
-                      if (skipBlurSave[s.id]) {
-                        setSkipBlurSave((prev) => ({ ...prev, [s.id]: false }));
-                        return;
-                      }
                       saveFields(s.id);
                     }}
                     onClick={(e) => e.stopPropagation()}
                     readOnly={Boolean(s.closedAt)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        setSkipBlurSave((prev) => ({ ...prev, [s.id]: true }));
-                        saveFields(s.id);
-                      }
-                    }}
                   />
                 </label>
                 <label className="flex items-center gap-1">
