@@ -64,7 +64,7 @@ export default function SubtaskList({
     <div className="mt-2">
       <div className="space-y-2">
         {items.map((s) => (
-          <label
+          <div
             key={s.id}
             className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50 cursor-pointer"
             onClick={() => onOpenTask?.(s.id)}
@@ -88,7 +88,7 @@ export default function SubtaskList({
             >
               {s.title}
             </span>
-          </label>
+          </div>
         ))}
       </div>
       <div className="flex items-center gap-2 mt-2">
