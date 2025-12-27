@@ -25,7 +25,6 @@ export default function Column({ column, onOpenTask }: { column: ColumnDTO; onOp
     priority: "",
     xp: "",
     estimatedHours: "",
-    notes: "",
     dependencies: "",
     startAt: "",
     endAt: "",
@@ -65,7 +64,6 @@ export default function Column({ column, onOpenTask }: { column: ColumnDTO; onOp
       priority: "",
       xp: "",
       estimatedHours: "",
-      notes: "",
       dependencies: "",
       startAt: "",
       endAt: "",
@@ -93,7 +91,6 @@ export default function Column({ column, onOpenTask }: { column: ColumnDTO; onOp
         priority: form.priority || undefined,
         xp: form.xp ? parseInt(form.xp, 10) || 0 : 0,
         estimatedSec: form.estimatedHours ? Math.round(parseFloat(form.estimatedHours) * 3600) : 0,
-        notes: form.notes || undefined,
         dependencyExternalIds: form.dependencies
           ? form.dependencies.split(/[ ,;]+/).filter(Boolean)
           : [],
@@ -285,16 +282,6 @@ export default function Column({ column, onOpenTask }: { column: ColumnDTO; onOp
                     placeholder="IDs separated by commas"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Notes</label>
-                <textarea
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 min-h-[70px]"
-                  placeholder="Scratchpad, context, or links"
-                />
               </div>
 
               {error && <p className="text-sm text-red-600">{error}</p>}

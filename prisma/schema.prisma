@@ -115,7 +115,6 @@ model Task {
   priority              Priority?
   estimatedSec          Int?
   xp                    Int?      @default(0)
-  notes                 String?   @db.Text
   dependencyExternalIds String[]  @default([])
 
   boardId    String

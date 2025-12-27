@@ -79,7 +79,6 @@ export function toTaskDTO(t: (DbTask & { subtasks?: DbTask[]; closureLogs?: Task
     priority: (t as DbTask).priority ?? null,
     xp: t.xp,
     estimatedSec: t.estimatedSec,
-    notes: t.notes ?? null,
     dependencyExternalIds: t.dependencyExternalIds ?? [],
 
 
@@ -108,12 +107,11 @@ export function toTaskDTO(t: (DbTask & { subtasks?: DbTask[]; closureLogs?: Task
 
         externalId: s.externalId ?? null,
         state: s.state ?? null,
-        status: s.status ?? null,
-        priority: (s as DbTask).priority ?? null,
-        xp: s.xp,
-        estimatedSec: s.estimatedSec,
-        notes: s.notes ?? null,
-        dependencyExternalIds: s.dependencyExternalIds ?? [],
+      status: s.status ?? null,
+      priority: (s as DbTask).priority ?? null,
+      xp: s.xp,
+      estimatedSec: s.estimatedSec,
+      dependencyExternalIds: s.dependencyExternalIds ?? [],
 
 
         startAt: s.startAt ? new Date(s.startAt).toISOString() : null,

@@ -9,7 +9,6 @@ export type ImportedRow = {
   priority?: string;           // "Priority" (string -> enum map later)
   estimatedSec?: number;       // from "Est. Time (min)" minutes -> seconds
   xp?: number;                 // "XP"
-  notes?: string;              // "Notes"
   dependencyExternalIds?: string[]; // from "dependency" (comma/space/semicolon separated)
 };
 
@@ -65,7 +64,6 @@ function mapRow(obj: Record<string, any>): ImportedRow | null {
       const n = Number(v);
       return isNaN(n) ? undefined : n;
     })(),
-    notes: norm(get("Notes")) || undefined,
     dependencyExternalIds: parseDeps(get("dependency")),
   };
 }

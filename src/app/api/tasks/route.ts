@@ -46,7 +46,6 @@ export async function POST(req: Request) {
         priority: body.priority ?? null,
         xp: typeof body.xp === "number" ? body.xp : 0,
         estimatedSec: typeof body.estimatedSec === "number" ? body.estimatedSec : 0,
-        notes: body.notes ?? null,
         dependencyExternalIds: Array.isArray(body.dependencyExternalIds)
           ? body.dependencyExternalIds
           : [],
@@ -87,7 +86,6 @@ export async function PATCH(req: Request) {
       "priority",
       "xp",
       "estimatedSec",
-      "notes",
       "dependencyExternalIds",
       "logHours",
     ];

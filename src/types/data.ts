@@ -52,7 +52,6 @@ export type TaskDTO = {
   priority: "" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   xp: number;
   estimatedSec: number; // store seconds
-  notes: string;
   dependencyExternalIds: string[];
 
   // Timing
