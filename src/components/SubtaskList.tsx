@@ -206,6 +206,13 @@ export default function SubtaskList({
                     }}
                     onClick={(e) => e.stopPropagation()}
                     readOnly={Boolean(s.closedAt)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        setSkipBlurSave((prev) => ({ ...prev, [s.id]: true }));
+                        saveFields(s.id);
+                      }
+                    }}
                   />
                 </label>
                 <label className="flex items-center gap-1">
@@ -228,6 +235,13 @@ export default function SubtaskList({
                     }}
                     onClick={(e) => e.stopPropagation()}
                     readOnly={Boolean(s.closedAt)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        setSkipBlurSave((prev) => ({ ...prev, [s.id]: true }));
+                        saveFields(s.id);
+                      }
+                    }}
                   />
                 </label>
                 <label className="flex items-center gap-1">
