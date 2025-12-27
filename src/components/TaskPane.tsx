@@ -529,7 +529,10 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                   }}
                 />
                 <span className="text-xs text-gray-500 whitespace-nowrap">
-                  Subtasks: {Number((paneTask.subtasks || []).reduce((sum, s) => sum + Number(s.logHours || 0), 0)).toFixed(2)}
+                  Subtasks: {Number((paneTask.subtasks || []).reduce((sum, s) => sum + Number(s.logHours || 0), 0)).toFixed(2)} h
+                </span>
+                <span className="text-xs text-gray-700 whitespace-nowrap font-semibold">
+                  Total: {Number(Number(paneTask.logHours || 0) + (paneTask.subtasks || []).reduce((sum, s) => sum + Number(s.logHours || 0), 0)).toFixed(2)} h
                 </span>
               </div>
             </Field>

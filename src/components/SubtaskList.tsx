@@ -124,6 +124,7 @@ export default function SubtaskList({
   }
 
   async function toggle(id: string, completed: boolean) {
+    setStatus(id, "saving");
     const res = await fetch("/api/tasks", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -138,13 +139,14 @@ export default function SubtaskList({
     });
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
-      alert(j?.error || "Unable to update subtask");
+      setStatus(id, "error", j?.error || "Unable to update subtask");
       return;
     }
     const updated = await res.json();
     const next = items.map((i) => (i.id === id ? updated : i));
     setItems(next);
     onChange?.(next);
+    setStatus(id, "success", completed ? "task closed" : "Saved");
   }
 
   async function patch(id: string, data: any) {
@@ -180,10 +182,15 @@ export default function SubtaskList({
               }}
             />
             <span
-              className={`px-2 py-1 rounded ${s.closedAt ? "line-through text-gray-400" : "text-gray-900 underline decoration-transparent hover:decoration-current"} cursor-pointer`}
+              className={`px-2 py-1 rounded relative overflow-hidden ${
+                s.closedAt ? "line-through text-gray-400" : "text-gray-900 underline decoration-transparent hover:decoration-current"
+              } cursor-pointer`}
               title={`view this subtask (${s.id}: ${s.title || "Untitled"})`}
               onClick={(e) => { e.stopPropagation(); onOpenTask?.(s.id); }}
             >
+              {fieldStatus[s.id]?.state === "saving" && !s.closedAt && (
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-200/70 to-transparent animate-[slide_1s_linear_infinite]" />
+              )}
               {s.title}
             </span>
             <div className={`ml-auto flex items-center gap-3 text-[11px] text-gray-700 ${s.closedAt ? "opacity-60" : ""}`}>
@@ -225,18 +232,19 @@ export default function SubtaskList({
                     readOnly={Boolean(s.closedAt)}
                   />
                 </label>
-                <label className="flex items-center gap-1">
-                  <span>Hours</span>
-                  <input
-                    type="number"
-                    step="0.25"
-                    className="border rounded px-2 py-1 w-20"
-                    value={fieldValues[s.id]?.logHours ?? ""}
-                    placeholder="0"
-                    disabled={Boolean(s.closedAt)}
-                    onChange={(e) => {
-                      if (s.closedAt) return;
-                      setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], logHours: e.target.value } }));
+               <label className="flex items-center gap-1">
+                 <span>Hours</span>
+                 <input
+                   type="number"
+                   step="0.25"
+                   className="border rounded px-2 py-1 w-20"
+                   value={fieldValues[s.id]?.logHours ?? ""}
+                   placeholder="0"
+                   disabled={Boolean(s.closedAt)}
+                   onChange={(e) => {
+                     if (s.closedAt) return;
+                      const next = { ...(fieldValues[s.id] || {}), logHours: e.target.value };
+                      setFieldValues((prev) => ({ ...prev, [s.id]: next }));
                     }}
                     onBlur={() => {
                       if (skipBlurSave[s.id]) {
@@ -257,7 +265,7 @@ export default function SubtaskList({
                   />
                 </label>
               {!s.closedAt && (
-                <div className="text-[11px]">
+                <div className="text-[11px] flex items-center gap-2">
                   {fieldStatus[s.id]?.state === "saving" && <span className="text-gray-600">Saving…</span>}
                   {fieldStatus[s.id]?.state === "success" && <span className="text-green-600">{fieldStatus[s.id]?.message}</span>}
                   {fieldStatus[s.id]?.state === "error" && (
