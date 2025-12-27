@@ -47,6 +47,8 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
   const [parentOpen, setParentOpen] = useState(false);
   const [depsQuery, setDepsQuery] = useState("");
   const [depsOpen, setDepsOpen] = useState(false);
+  const [enterAnim, setEnterAnim] = useState(false);
+  const [exitAnim, setExitAnim] = useState(false);
 
   useEffect(() => {
     setPaneTask(taskFromBoard || null);
@@ -59,6 +61,8 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     setParentOpen(false);
     setDepsQuery("");
     setDepsOpen(false);
+    setExitAnim(false);
+    requestAnimationFrame(() => setEnterAnim(true));
   }, [taskId, taskFromBoard]);
 
   // Always hydrate latest task (with closure logs) when pane opens
@@ -158,6 +162,13 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     [board, paneTask, markSuccessTimeout]
   );
 
+  const handleClose = useCallback(() => {
+    if (exitAnim) return;
+    setExitAnim(true);
+    setEnterAnim(false);
+    setTimeout(onClose, 250);
+  }, [exitAnim, onClose]);
+
   const commitIfChanged = useCallback(
     (key: keyof TaskDTO | string, next: any) => {
       if (!paneTask || paneTask.closedAt) return;
@@ -250,7 +261,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
       {/* BACKDROP */}
       <div
         ref={backdropRef}
-        className="fixed inset-0 bg-black/40 z-40"
+        className={`fixed inset-0 bg-black/40 z-40 transition-opacity duration-300 ${enterAnim ? "opacity-100" : "opacity-0"}`}
         aria-hidden="true"
       />
       {/* PANEL */}
@@ -258,7 +269,9 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
         key={paneTask.id}
         role="dialog"
         aria-modal="true"
-        className="fixed right-0 top-0 h-full w-full md:w-[70%] bg-white z-50 shadow-2xl flex flex-col"
+        className={`fixed right-0 top-0 h-full w-full md:w-[70%] bg-white z-50 shadow-2xl flex flex-col transform transition-all duration-300 ${
+          exitAnim ? "opacity-0 translate-x-6" : enterAnim ? "opacity-100 translate-x-0" : "opacity-0 translate-x-6"
+        }`}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.stopPropagation();
@@ -316,7 +329,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
         </div>
           <button
             className="rounded-full w-8 h-8 flex items-center justify-center hover:bg-gray-100"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close"
           >
             ✕
@@ -560,31 +573,32 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
 
         {/* Footer: Import + Export + Close/Reopen */}
         <div className="p-4 border-t flex flex-wrap items-center gap-3">
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".xlsx,.xls"
-            className="hidden"
-            onChange={(e) => e.target.files && handleImport(e.target.files[0])}
-          />
-          <button
-            className="px-3 py-2 rounded-xl bg-black text-white text-sm hover:opacity-90 disabled:opacity-50"
-            disabled={uploading}
-            onClick={() => fileRef.current?.click()}
-            title="Sheet name is the main task; each row becomes a subtask"
-          >
-            {uploading ? "Importing…" : "Import Subtasks (Excel)"}
-          </button>
-
-          {importMsg && <span className="text-xs text-gray-600">{importMsg}</span>}
-
-          <div className="ml-auto flex items-center gap-3">
+          <div className="flex items-center gap-3">
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={(e) => e.target.files && handleImport(e.target.files[0])}
+            />
+            <button
+              className="px-3 py-2 rounded-xl bg-black text-white text-sm hover:opacity-90 disabled:opacity-50"
+              disabled={uploading}
+              onClick={() => fileRef.current?.click()}
+              title="Sheet name is the main task; each row becomes a subtask"
+            >
+              {uploading ? "Importing…" : "Import Subtasks (Excel)"}
+            </button>
             <a className="underline text-sm" href={`/api/tasks/${paneTask.id}/export?format=csv`}>
               Export CSV
             </a>
             <a className="underline text-sm" href={`/api/tasks/${paneTask.id}/export?format=xlsx`}>
               Export Excel
             </a>
+            {importMsg && <span className="text-xs text-gray-600">{importMsg}</span>}
+          </div>
+
+          <div className="ml-auto flex items-center gap-3">
             {!isClosed ? (
               <button
                 type="button"
@@ -595,7 +609,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                   if (!ok) return;
                   try {
                     await board?.deleteTask(paneTask.id);
-                    onClose();
+                    handleClose();
                   } catch (e: any) {
                     alert(e?.message || "Failed to delete task");
                   }
