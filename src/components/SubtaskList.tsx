@@ -33,7 +33,7 @@ export default function SubtaskList({
     const next = [...items, st];
     setItems(next);
     onChange?.(next);
-    //setTitle("");
+    setTitle("");
   }
 
   async function toggle(id: string, completed: boolean) {
