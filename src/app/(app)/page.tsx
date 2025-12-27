@@ -4,10 +4,7 @@ import { auth } from "@/../auth";
 import { toPlain } from "@/lib/serialize";
 import { BoardDTO, ColumnDTO, TaskDTO } from "@/types/data";
 import { BoardProvider } from "@/components/BoardContext";
-
-export const metadata = {
-  title: "Board",
-};
+export { metadata } from "./layout";
 
 export default async function Page() {
   const session = await auth();
