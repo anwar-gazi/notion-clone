@@ -161,10 +161,20 @@ export default function SubtaskList({
     onChange?.(next);
   }
 
+  const sortedItems = [...items].sort((a, b) => {
+    const aOpen = !a.closedAt;
+    const bOpen = !b.closedAt;
+    if (aOpen !== bOpen) return aOpen ? -1 : 1;
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (aTime !== bTime) return aTime - bTime;
+    return a.id.localeCompare(b.id);
+  });
+
   return (
     <div className="mt-2">
       <div className="space-y-2">
-        {items.map((s) => (
+        {sortedItems.map((s) => (
           <div
             key={s.id}
             className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50"
