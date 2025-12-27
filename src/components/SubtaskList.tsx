@@ -67,11 +67,12 @@ export default function SubtaskList({
     }
   };
 
-  async function saveFields(id: string) {
+  async function saveFields(id: string, nextVals?: { startAt?: string; endAt?: string; logHours?: string }) {
     if (fieldStatus[id]?.state === "saving") return;
     const item = items.find((i) => i.id === id);
     if (!item) return;
-    const pending = fieldValues[id] || { startAt: "", endAt: "", logHours: "" };
+    const current = fieldValues[id] || { startAt: "", endAt: "", logHours: "" };
+    const pending = { ...current, ...(nextVals || {}) };
 
     const changed =
       toLocalInput(item.startAt) !== pending.startAt ||
@@ -195,7 +196,10 @@ export default function SubtaskList({
                     disabled={Boolean(s.closedAt)}
                     onChange={(e) => {
                       if (s.closedAt) return;
-                      setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], startAt: e.target.value } }));
+                      const next = { ...(fieldValues[s.id] || {}), startAt: e.target.value };
+                      setFieldValues((prev) => ({ ...prev, [s.id]: next }));
+                      setSkipBlurSave((prev) => ({ ...prev, [s.id]: true }));
+                      saveFields(s.id, next);
                     }}
                     onBlur={() => {
                       if (skipBlurSave[s.id]) {
@@ -224,7 +228,10 @@ export default function SubtaskList({
                     disabled={Boolean(s.closedAt)}
                     onChange={(e) => {
                       if (s.closedAt) return;
-                      setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], endAt: e.target.value } }));
+                      const next = { ...(fieldValues[s.id] || {}), endAt: e.target.value };
+                      setFieldValues((prev) => ({ ...prev, [s.id]: next }));
+                      setSkipBlurSave((prev) => ({ ...prev, [s.id]: true }));
+                      saveFields(s.id, next);
                     }}
                     onBlur={() => {
                       if (skipBlurSave[s.id]) {
