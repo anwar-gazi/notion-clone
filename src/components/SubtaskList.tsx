@@ -15,12 +15,33 @@ export default function SubtaskList({
 }) {
   const [items, setItems] = useState(initial || []);
   const [title, setTitle] = useState("");
+  const [fieldValues, setFieldValues] = useState<Record<string, { startAt: string; endAt: string; logHours: string }>>({});
+
+  const toLocalInput = (value: any) => {
+    if (!value) return "";
+    const d = typeof value === "string" ? new Date(value) : value;
+    const off = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - off * 60000);
+    return local.toISOString().slice(0, 16);
+  };
 
   // notify parent once on mount (so the initial badge is correct)
   useEffect(() => {
     onChange?.(items);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const map: Record<string, { startAt: string; endAt: string; logHours: string }> = {};
+    for (const s of items) {
+      map[s.id] = {
+        startAt: toLocalInput(s.startAt),
+        endAt: toLocalInput(s.endAt),
+        logHours: s.logHours != null ? String(s.logHours) : "",
+      };
+    }
+    setFieldValues(map);
+  }, [items]);
 
   async function add() {
     if (!title.trim()) return;
@@ -40,8 +61,20 @@ export default function SubtaskList({
     const res = await fetch("/api/tasks", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, completed }),
+      body: JSON.stringify({
+        id,
+        completed,
+        closedAt: completed ? undefined : null,
+        startAt: fieldValues[id]?.startAt || null,
+        endAt: fieldValues[id]?.endAt || null,
+        logHours: fieldValues[id]?.logHours ? parseFloat(fieldValues[id].logHours) : 0,
+      }),
     });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      alert(j?.error || "Unable to update subtask");
+      return;
+    }
     const updated = await res.json();
     const next = items.map((i) => (i.id === id ? updated : i));
     setItems(next);
@@ -87,6 +120,33 @@ export default function SubtaskList({
             >
               {s.title}
             </span>
+            {!s.closedAt && (
+              <div className="flex items-center gap-2 text-xs text-gray-700">
+                <input
+                  type="datetime-local"
+                  className="border rounded px-2 py-1"
+                  value={fieldValues[s.id]?.startAt || ""}
+                  onChange={(e) => setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], startAt: e.target.value } }))}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <input
+                  type="datetime-local"
+                  className="border rounded px-2 py-1"
+                  value={fieldValues[s.id]?.endAt || ""}
+                  onChange={(e) => setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], endAt: e.target.value } }))}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <input
+                  type="number"
+                  step="0.25"
+                  className="border rounded px-2 py-1 w-24"
+                  value={fieldValues[s.id]?.logHours ?? ""}
+                  placeholder="0"
+                  onChange={(e) => setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], logHours: e.target.value } }))}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+            )}
           </div>
         ))}
       </div>
