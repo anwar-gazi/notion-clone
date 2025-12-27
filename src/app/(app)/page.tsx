@@ -5,6 +5,10 @@ import { toPlain } from "@/lib/serialize";
 import { BoardDTO, ColumnDTO, TaskDTO } from "@/types/data";
 import { BoardProvider } from "@/components/BoardContext";
 
+export const metadata = {
+  title: "Board",
+};
+
 export default async function Page() {
   const session = await auth();
   // Middleware ensures user is signed in, but auth() is still useful for identity
