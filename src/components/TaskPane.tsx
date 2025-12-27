@@ -40,6 +40,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
   const [importMsg, setImportMsg] = useState<string>("");
   const [subVersion, setSubVersion] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [reopenReason, setReopenReason] = useState("");
   const [parentQuery, setParentQuery] = useState("");
@@ -75,6 +76,20 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     };
     load();
   }, [taskId]);
+  // restore scroll position per task
+  useEffect(() => {
+    if (!taskId || typeof window === "undefined") return;
+    const key = `taskpane-scroll-${taskId}`;
+    const restore = () => {
+      const y = Number(window.localStorage.getItem(key) || "0");
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = y;
+      }
+    };
+    // run twice to handle late content height changes
+    requestAnimationFrame(restore);
+    setTimeout(restore, 50);
+  }, [taskId, paneTask, subVersion]);
   const breadcrumbs = useMemo(() => {
     const items: TaskDTO[] = [];
     let current: TaskDTO | null = paneTask;
@@ -309,7 +324,15 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto p-4 space-y-6"
+          onScroll={(e) => {
+            if (!paneTask || typeof window === "undefined") return;
+            const key = `taskpane-scroll-${paneTask.id}`;
+            window.localStorage.setItem(key, String((e.currentTarget as HTMLDivElement).scrollTop));
+          }}
+        >
           {/* Description */}
           <section>
             <Field label="Description" status={fieldStatus["description"]} disabled={isClosed}>
