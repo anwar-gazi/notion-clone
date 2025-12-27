@@ -90,14 +90,20 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     [paneTask?.closureLogs]
   );
   const parentTask = paneTask?.parentTaskId ? board?.board.tasks[paneTask.parentTaskId] : null;
-  const parentOptions = useMemo(() => {
-    const term = (parentQuery || "").toLowerCase().trim();
-    const list = Object.values(board?.board.tasks || {}).filter((t) => t.id !== paneTask?.id);
-    if (!term) return list.slice(0, 8);
-    return list
-      .filter((t) => t.title.toLowerCase().includes(term) || t.id.toLowerCase().includes(term))
-      .slice(0, 8);
-  }, [board?.board.tasks, parentQuery, paneTask?.id]);
+  const searchTasks = useCallback(
+    (term: string) => {
+      const needle = term.toLowerCase().trim();
+      const list = Object.values(board?.board.tasks || {}).filter((t) => t.id !== paneTask?.id);
+      if (!needle) return list.slice(0, 8);
+      return list
+        .filter((t) => t.title.toLowerCase().includes(needle) || t.id.toLowerCase().includes(needle))
+        .slice(0, 8);
+    },
+    [board?.board.tasks, paneTask?.id]
+  );
+
+  const parentOptions = useMemo(() => searchTasks(parentQuery), [parentQuery, searchTasks]);
+  const dependencies = paneTask?.dependencyExternalIds || [];
 
   const markSuccessTimeout = useCallback((key: string) => {
     setTimeout(() => {
@@ -161,6 +167,16 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
     [board?.board.tasks, paneTask, runSave]
   );
 
+  const confirmAndSetDeps = useCallback(
+    async (nextIds: string[]) => {
+      if (!paneTask || paneTask.closedAt) return;
+      const ok = window.confirm(`Update dependencies to ${nextIds.join(", ") || "(none)" } ?`);
+      if (!ok) return;
+      await runSave("dependencyExternalIds", { dependencyExternalIds: nextIds });
+    },
+    [paneTask, runSave]
+  );
+
   async function handleImport(file: File) {
     if (!paneTask) return;
     setUploading(true);
@@ -205,13 +221,6 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
       toSend: (v: number) => Math.round((v || 0) * 3600),
     },
     { key: "notes", label: "Notes", type: "textarea" },
-    {
-      key: "dependencyExternalIds",
-      label: "Dependencies (IDs)",
-      type: "text",
-      toView: (v: any) => (Array.isArray(v) ? v.join(", ") : v || ""),
-      toSend: (v: string) => v.split(/[ ,;]+/).filter(Boolean),
-    },
   ] as const;
 
   const doneCount = (paneTask.subtasks || []).filter((s: any) => s.completed).length;
@@ -378,6 +387,73 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                   disabled={isClosed}
                 />
               ))}
+              {/* Dependencies picker */}
+              <Field label="Dependencies (IDs)" status={fieldStatus["dependencyExternalIds"]} disabled={isClosed}>
+                <div className="space-y-2">
+                  {dependencies.length > 0 && (
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      {dependencies.map((d) => (
+                        <a
+                          key={d}
+                          href={`/task/${d}`}
+                          className="px-2 py-1 rounded-full bg-gray-100 border text-gray-700 hover:underline"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {board?.board.tasks[d]?.title || d}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  <div className="relative">
+                    <input
+                      className="border rounded-xl px-3 py-2 w-full pr-16"
+                      value={parentQuery}
+                      onChange={(e) => {
+                        setParentQuery(e.target.value);
+                        setParentOpen(true);
+                      }}
+                      onFocus={() => setParentOpen(true)}
+                      onBlur={() => setTimeout(() => setParentOpen(false), 150)}
+                      placeholder="Search tasks by title or ID"
+                      disabled={isClosed}
+                    />
+                    {dependencies.length > 0 && !isClosed && (
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-2 text-xs text-gray-500 hover:text-gray-800"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => confirmAndSetDeps([])}
+                      >
+                        Clear
+                      </button>
+                    )}
+                    {parentOpen && !isClosed && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow max-h-60 overflow-y-auto">
+                        {parentOptions.length === 0 ? (
+                          <div className="px-3 py-2 text-xs text-gray-500">No matches</div>
+                        ) : (
+                          parentOptions.map((t) => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                const next = Array.from(new Set([...dependencies, t.id]));
+                                confirmAndSetDeps(next);
+                              }}
+                            >
+                              <div className="font-medium text-gray-800">{t.title || "Untitled"}</div>
+                              <div className="text-[11px] text-gray-500">{t.id}</div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Field>
             </div>
           </section>
 
