@@ -216,6 +216,12 @@ export default function SubtaskList({
                     onBlur={() => saveFields(s.id)}
                     onClick={(e) => e.stopPropagation()}
                     readOnly={Boolean(s.closedAt)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        saveFields(s.id);
+                      }
+                    }}
                   />
                 </label>
               {!s.closedAt && (
