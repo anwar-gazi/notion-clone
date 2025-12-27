@@ -491,6 +491,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                 type="datetime-local"
                 className="border rounded-xl px-3 py-2 w-full"
                 defaultValue={toLocalInput(paneTask.startAt)}
+                readOnly={isClosed}
                 onBlur={(e) => commitIfChanged("startAt", e.currentTarget.value || null)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -504,6 +505,7 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
                 type="datetime-local"
                 className="border rounded-xl px-3 py-2 w-full"
                 defaultValue={toLocalInput(paneTask.endAt)}
+                readOnly={isClosed}
                 onBlur={(e) => commitIfChanged("endAt", e.currentTarget.value || null)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
