@@ -66,8 +66,7 @@ export default function SubtaskList({
         {items.map((s) => (
           <div
             key={s.id}
-            className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50 cursor-pointer"
-            onClick={() => onOpenTask?.(s.id)}
+            className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50"
           >
             <input
               type="checkbox"
@@ -82,7 +81,7 @@ export default function SubtaskList({
               }}
             />
             <span
-              className={`flex-1 px-2 py-1 rounded ${s.closedAt ? "line-through text-gray-400" : ""}`}
+              className={`px-2 py-1 rounded ${s.closedAt ? "line-through text-gray-400" : "text-gray-900 underline decoration-transparent hover:decoration-current"} cursor-pointer`}
               title={`view this subtask (${s.id}: ${s.title || "Untitled"})`}
               onClick={(e) => { e.stopPropagation(); onOpenTask?.(s.id); }}
             >
