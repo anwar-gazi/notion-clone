@@ -17,6 +17,7 @@ export default function SubtaskList({
   const [title, setTitle] = useState("");
   const [fieldValues, setFieldValues] = useState<Record<string, { startAt: string; endAt: string; logHours: string }>>({});
   const [fieldStatus, setFieldStatus] = useState<Record<string, { state: "idle" | "saving" | "success" | "error"; message?: string }>>({});
+  const [skipBlurSave, setSkipBlurSave] = useState<Record<string, boolean>>({});
 
   const toLocalInput = (value: any) => {
     if (!value) return "";
@@ -180,7 +181,13 @@ export default function SubtaskList({
                       if (s.closedAt) return;
                       setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], startAt: e.target.value } }));
                     }}
-                    onBlur={() => saveFields(s.id)}
+                    onBlur={() => {
+                      if (skipBlurSave[s.id]) {
+                        setSkipBlurSave((prev) => ({ ...prev, [s.id]: false }));
+                        return;
+                      }
+                      saveFields(s.id);
+                    }}
                     onClick={(e) => e.stopPropagation()}
                     readOnly={Boolean(s.closedAt)}
                   />
@@ -196,7 +203,13 @@ export default function SubtaskList({
                       if (s.closedAt) return;
                       setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], endAt: e.target.value } }));
                     }}
-                    onBlur={() => saveFields(s.id)}
+                    onBlur={() => {
+                      if (skipBlurSave[s.id]) {
+                        setSkipBlurSave((prev) => ({ ...prev, [s.id]: false }));
+                        return;
+                      }
+                      saveFields(s.id);
+                    }}
                     onClick={(e) => e.stopPropagation()}
                     readOnly={Boolean(s.closedAt)}
                   />
@@ -214,12 +227,19 @@ export default function SubtaskList({
                       if (s.closedAt) return;
                       setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], logHours: e.target.value } }));
                     }}
-                    onBlur={() => saveFields(s.id)}
+                    onBlur={() => {
+                      if (skipBlurSave[s.id]) {
+                        setSkipBlurSave((prev) => ({ ...prev, [s.id]: false }));
+                        return;
+                      }
+                      saveFields(s.id);
+                    }}
                     onClick={(e) => e.stopPropagation()}
                     readOnly={Boolean(s.closedAt)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
+                        setSkipBlurSave((prev) => ({ ...prev, [s.id]: true }));
                         saveFields(s.id);
                       }
                     }}
