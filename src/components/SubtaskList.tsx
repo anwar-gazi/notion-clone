@@ -1,6 +1,7 @@
 // src/components/SubtaskList.tsx
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useBoard } from "./BoardContext";
 
 export default function SubtaskList({
   taskId,
@@ -13,11 +14,14 @@ export default function SubtaskList({
   onChange?: (items: any[]) => void;
   onOpenTask?: (id: string) => void;
 }) {
+  const board = useBoard();
   const [items, setItems] = useState(initial || []);
   const [title, setTitle] = useState("");
   const [fieldValues, setFieldValues] = useState<Record<string, { startAt: string; endAt: string; logHours: string }>>({});
   const [fieldStatus, setFieldStatus] = useState<Record<string, { state: "idle" | "saving" | "success" | "error"; message?: string }>>({});
   const [skipBlurSave, setSkipBlurSave] = useState<Record<string, boolean>>({});
+  const [parentPickerOpen, setParentPickerOpen] = useState<Record<string, boolean>>({});
+  const [parentQuery, setParentQuery] = useState<Record<string, string>>({});
 
   const toLocalInput = (value: any) => {
     if (!value) return "";
@@ -161,6 +165,43 @@ export default function SubtaskList({
     onChange?.(next);
   }
 
+  const addParent = async (childId: string, parentId: string) => {
+    const item = items.find((i) => i.id === childId);
+    if (!item) return;
+    const current = Array.from(new Set([...(item.parentTaskIds || []), taskId])).filter(Boolean);
+    if (current.includes(parentId)) return;
+    const nextParents = Array.from(new Set([...current, parentId]));
+    const ok = window.confirm("Add this parent to the subtask?");
+    if (!ok) return;
+    setStatus(childId, "saving");
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: childId, parentTaskIds: nextParents, primaryParentId: item.primaryParentId || null }),
+      });
+      const updated = await res.json();
+      if (!res.ok) throw new Error(updated?.error || "Update failed");
+      const next = items.map((i) => (i.id === childId ? updated : i));
+      setItems(next);
+      onChange?.(next);
+      setStatus(childId, "success", "Parent added");
+    } catch (e: any) {
+      setStatus(childId, "error", e?.message || "Update failed");
+    } finally {
+      setParentPickerOpen((prev) => ({ ...prev, [childId]: false }));
+    }
+  };
+
+  const searchOptions = (term: string, childId: string, existing: string[]) => {
+    const list = Object.values(board?.board.tasks || {}).filter((t) => t.id !== childId);
+    const needle = term.toLowerCase().trim();
+    const filtered = needle
+      ? list.filter((t) => t.title.toLowerCase().includes(needle) || t.id.toLowerCase().includes(needle))
+      : list;
+    return filtered.filter((t) => !existing.includes(t.id)).slice(0, 8);
+  };
+
   const sortedItems = [...items].sort((a, b) => {
     const aOpen = !a.closedAt;
     const bOpen = !b.closedAt;
@@ -274,18 +315,56 @@ export default function SubtaskList({
                         return;
                       }
                       saveFields(s.id);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    readOnly={Boolean(s.closedAt)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        setSkipBlurSave((prev) => ({ ...prev, [s.id]: true }));
-                        saveFields(s.id);
-                      }
-                    }}
-                  />
-                </label>
+                   }}
+                   onClick={(e) => e.stopPropagation()}
+                   readOnly={Boolean(s.closedAt)}
+                   onKeyDown={(e) => {
+                     if (e.key === "Enter") {
+                       e.preventDefault();
+                       setSkipBlurSave((prev) => ({ ...prev, [s.id]: true }));
+                       saveFields(s.id);
+                     }
+                   }}
+                 />
+               </label>
+              <div className="relative" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  className="text-xs text-gray-600 hover:text-black px-2 py-1 rounded border border-dashed"
+                  disabled={Boolean(s.closedAt)}
+                  onClick={() => setParentPickerOpen((prev) => ({ ...prev, [s.id]: !prev[s.id] }))}
+                  title="Add another parent"
+                >
+                  🔗 Add parent
+                </button>
+                {parentPickerOpen[s.id] && !s.closedAt && (
+                  <div className="absolute right-0 top-full mt-1 w-64 bg-white border rounded shadow-lg z-20 p-2 space-y-2">
+                    <input
+                      className="w-full border rounded px-2 py-1 text-sm"
+                      placeholder="Search tasks"
+                      value={parentQuery[s.id] || ""}
+                      onChange={(e) => setParentQuery((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                    />
+                    <div className="max-h-48 overflow-y-auto text-sm">
+                      {searchOptions(parentQuery[s.id] || "", s.id, s.parentTaskIds || []).length === 0 && (
+                        <div className="text-gray-500 text-xs px-2 py-1">No matches</div>
+                      )}
+                      {searchOptions(parentQuery[s.id] || "", s.id, s.parentTaskIds || []).map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          className="w-full text-left px-2 py-1 hover:bg-gray-100"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => addParent(s.id, t.id)}
+                        >
+                          <div className="font-medium text-gray-800">{t.title || "Untitled"}</div>
+                          <div className="text-[11px] text-gray-500">{t.id}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
               {!s.closedAt && (
                 <div className="text-[11px] flex items-center gap-2">
                   {fieldStatus[s.id]?.state === "saving" && <span className="text-gray-600">Saving…</span>}
