@@ -194,7 +194,7 @@ export default function SubtaskList({
             {s.primaryParentId && s.primaryParentId !== taskId && (
               <span
                 className="text-[12px] text-amber-600"
-                title={`Primary parent is ${s.primaryParentId}`}
+                title={`Primary parent: ${s.primaryParentId}${(s as any).primaryParentTitle ? ` (${(s as any).primaryParentTitle})` : ""}`}
               >
                 ↔
               </span>
