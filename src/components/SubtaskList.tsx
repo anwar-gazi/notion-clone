@@ -16,6 +16,7 @@ export default function SubtaskList({
   const [items, setItems] = useState(initial || []);
   const [title, setTitle] = useState("");
   const [fieldValues, setFieldValues] = useState<Record<string, { startAt: string; endAt: string; logHours: string }>>({});
+  const [fieldStatus, setFieldStatus] = useState<Record<string, { state: "idle" | "saving" | "success" | "error"; message?: string }>>({});
 
   const toLocalInput = (value: any) => {
     if (!value) return "";
@@ -42,6 +43,52 @@ export default function SubtaskList({
     }
     setFieldValues(map);
   }, [items]);
+
+  const setStatus = (id: string, state: "idle" | "saving" | "success" | "error", message?: string) => {
+    setFieldStatus((prev) => ({ ...prev, [id]: { state, message } }));
+    if (state === "success") {
+      setTimeout(() => {
+        setFieldStatus((prev2) => ({ ...prev2, [id]: { state: "idle" } }));
+      }, 5000);
+    }
+  };
+
+  async function saveFields(id: string) {
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+    const pending = fieldValues[id] || { startAt: "", endAt: "", logHours: "" };
+
+    const changed =
+      toLocalInput(item.startAt) !== pending.startAt ||
+      toLocalInput(item.endAt) !== pending.endAt ||
+      (item.logHours != null ? String(item.logHours) : "") !== pending.logHours;
+    if (!changed) return;
+
+    const ok = window.confirm("Save time changes to this subtask?");
+    if (!ok) return;
+
+    setStatus(id, "saving");
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          startAt: pending.startAt || null,
+          endAt: pending.endAt || null,
+          logHours: pending.logHours ? parseFloat(pending.logHours) : 0,
+        }),
+      });
+      const updated = await res.json();
+      if (!res.ok) throw new Error(updated?.error || "Save failed");
+      const next = items.map((i) => (i.id === id ? updated : i));
+      setItems(next);
+      onChange?.(next);
+      setStatus(id, "success", "Saved");
+    } catch (e: any) {
+      setStatus(id, "error", e?.message || "Save failed");
+    }
+  }
 
   async function add() {
     if (!title.trim()) return;
@@ -121,53 +168,65 @@ export default function SubtaskList({
               {s.title}
             </span>
             <div className={`ml-auto flex items-center gap-3 text-[11px] text-gray-700 ${s.closedAt ? "opacity-60" : ""}`}>
-              <label className="flex items-center gap-1">
-                <span>Start</span>
-                <input
-                  type="datetime-local"
-                  className="border rounded px-2 py-1"
-                  value={fieldValues[s.id]?.startAt || ""}
-                  disabled={Boolean(s.closedAt)}
-                  onChange={(e) =>
-                    !s.closedAt &&
-                    setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], startAt: e.target.value } }))
-                  }
-                  onClick={(e) => e.stopPropagation()}
-                  readOnly={Boolean(s.closedAt)}
-                />
-              </label>
-              <label className="flex items-center gap-1">
-                <span>End</span>
-                <input
-                  type="datetime-local"
-                  className="border rounded px-2 py-1"
-                  value={fieldValues[s.id]?.endAt || ""}
-                  disabled={Boolean(s.closedAt)}
-                  onChange={(e) =>
-                    !s.closedAt &&
-                    setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], endAt: e.target.value } }))
-                  }
-                  onClick={(e) => e.stopPropagation()}
-                  readOnly={Boolean(s.closedAt)}
-                />
-              </label>
-              <label className="flex items-center gap-1">
-                <span>Hours</span>
-                <input
-                  type="number"
-                  step="0.25"
-                  className="border rounded px-2 py-1 w-20"
-                  value={fieldValues[s.id]?.logHours ?? ""}
-                  placeholder="0"
-                  disabled={Boolean(s.closedAt)}
-                  onChange={(e) =>
-                    !s.closedAt &&
-                    setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], logHours: e.target.value } }))
-                  }
-                  onClick={(e) => e.stopPropagation()}
-                  readOnly={Boolean(s.closedAt)}
-                />
-              </label>
+                <label className="flex items-center gap-1">
+                  <span>Start</span>
+                  <input
+                    type="datetime-local"
+                    className="border rounded px-2 py-1"
+                    value={fieldValues[s.id]?.startAt || ""}
+                    disabled={Boolean(s.closedAt)}
+                    onChange={(e) => {
+                      if (s.closedAt) return;
+                      setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], startAt: e.target.value } }));
+                    }}
+                    onBlur={() => saveFields(s.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    readOnly={Boolean(s.closedAt)}
+                  />
+                </label>
+                <label className="flex items-center gap-1">
+                  <span>End</span>
+                  <input
+                    type="datetime-local"
+                    className="border rounded px-2 py-1"
+                    value={fieldValues[s.id]?.endAt || ""}
+                    disabled={Boolean(s.closedAt)}
+                    onChange={(e) => {
+                      if (s.closedAt) return;
+                      setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], endAt: e.target.value } }));
+                    }}
+                    onBlur={() => saveFields(s.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    readOnly={Boolean(s.closedAt)}
+                  />
+                </label>
+                <label className="flex items-center gap-1">
+                  <span>Hours</span>
+                  <input
+                    type="number"
+                    step="0.25"
+                    className="border rounded px-2 py-1 w-20"
+                    value={fieldValues[s.id]?.logHours ?? ""}
+                    placeholder="0"
+                    disabled={Boolean(s.closedAt)}
+                    onChange={(e) => {
+                      if (s.closedAt) return;
+                      setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], logHours: e.target.value } }));
+                    }}
+                    onBlur={() => saveFields(s.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    readOnly={Boolean(s.closedAt)}
+                  />
+                </label>
+              {!s.closedAt && (
+                <div className="text-[11px]">
+                  {fieldStatus[s.id]?.state === "saving" && <span className="text-gray-600">Saving…</span>}
+                  {fieldStatus[s.id]?.state === "success" && <span className="text-green-600">{fieldStatus[s.id]?.message}</span>}
+                  {fieldStatus[s.id]?.state === "error" && (
+                    <span className="text-red-600">{fieldStatus[s.id]?.message || "Save failed"}</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ))}
