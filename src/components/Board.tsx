@@ -37,7 +37,17 @@ export default function Board({ board }: { board: BoardDTO }) {
   useEffect(() => {
     if (!router || !pathname) return;
     const base = basePathRef.current || "/";
-    const target = activeTaskId ? `${base.replace(/\/$/, "")}/task/${activeTaskId}` : base || "/";
+    const hasTaskInPath = pathname.includes("/task/");
+
+    if (!activeTaskId) {
+      // If URL already has a task, don't force navigation; let restore effect set state.
+      if (hasTaskInPath) return;
+      const targetBase = base || "/";
+      if (pathname !== targetBase) router.replace(targetBase, { scroll: false });
+      return;
+    }
+
+    const target = `${base.replace(/\/$/, "")}/task/${activeTaskId}`;
     if (pathname === target) return;
     router.push(target, { scroll: false });
   }, [activeTaskId, pathname, router]);
