@@ -82,6 +82,7 @@ export default function SubtaskList({
             />
             <span
               className={`flex-1 px-2 py-1 rounded ${s.closedAt ? "line-through text-gray-400" : ""}`}
+              title={`view this subtask (${s.id}: ${s.title || "Untitled"})`}
               onClick={(e) => { e.stopPropagation(); onOpenTask?.(s.id); }}
             >
               {s.title}
