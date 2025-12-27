@@ -120,33 +120,55 @@ export default function SubtaskList({
             >
               {s.title}
             </span>
-            {!s.closedAt && (
-              <div className="flex items-center gap-2 text-xs text-gray-700">
+            <div className={`ml-auto flex items-center gap-3 text-[11px] text-gray-700 ${s.closedAt ? "opacity-60" : ""}`}>
+              <label className="flex items-center gap-1">
+                <span>Start</span>
                 <input
                   type="datetime-local"
                   className="border rounded px-2 py-1"
                   value={fieldValues[s.id]?.startAt || ""}
-                  onChange={(e) => setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], startAt: e.target.value } }))}
+                  disabled={Boolean(s.closedAt)}
+                  onChange={(e) =>
+                    !s.closedAt &&
+                    setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], startAt: e.target.value } }))
+                  }
                   onClick={(e) => e.stopPropagation()}
+                  readOnly={Boolean(s.closedAt)}
                 />
+              </label>
+              <label className="flex items-center gap-1">
+                <span>End</span>
                 <input
                   type="datetime-local"
                   className="border rounded px-2 py-1"
                   value={fieldValues[s.id]?.endAt || ""}
-                  onChange={(e) => setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], endAt: e.target.value } }))}
+                  disabled={Boolean(s.closedAt)}
+                  onChange={(e) =>
+                    !s.closedAt &&
+                    setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], endAt: e.target.value } }))
+                  }
                   onClick={(e) => e.stopPropagation()}
+                  readOnly={Boolean(s.closedAt)}
                 />
+              </label>
+              <label className="flex items-center gap-1">
+                <span>Hours</span>
                 <input
                   type="number"
                   step="0.25"
-                  className="border rounded px-2 py-1 w-24"
+                  className="border rounded px-2 py-1 w-20"
                   value={fieldValues[s.id]?.logHours ?? ""}
                   placeholder="0"
-                  onChange={(e) => setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], logHours: e.target.value } }))}
+                  disabled={Boolean(s.closedAt)}
+                  onChange={(e) =>
+                    !s.closedAt &&
+                    setFieldValues((prev) => ({ ...prev, [s.id]: { ...prev[s.id], logHours: e.target.value } }))
+                  }
                   onClick={(e) => e.stopPropagation()}
+                  readOnly={Boolean(s.closedAt)}
                 />
-              </div>
-            )}
+              </label>
+            </div>
           </div>
         ))}
       </div>
