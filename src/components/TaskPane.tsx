@@ -225,7 +225,6 @@ export default function TaskPane({ taskId, onClose, onOpenTask }: { taskId: stri
       toView: (v: any) => (v ? v / 3600 : 0),
       toSend: (v: number) => Math.round((v || 0) * 3600),
     },
-    { key: "notes", label: "Notes", type: "textarea" },
   ] as const;
 
   const doneCount = (paneTask.subtasks || []).filter((s: any) => s.completed).length;
